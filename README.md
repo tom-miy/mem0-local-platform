@@ -100,8 +100,8 @@ jobs:
     secrets:
       MEM0_API_URL: ${{ secrets.MEM0_API_URL }}
       MEM0_API_KEY: ${{ secrets.MEM0_API_KEY }}
-      CLOUDFLARE_ACCESS_CLIENT_ID: ${{ secrets.CLOUDFLARE_ACCESS_CLIENT_ID }}
-      CLOUDFLARE_ACCESS_CLIENT_SECRET: ${{ secrets.CLOUDFLARE_ACCESS_CLIENT_SECRET }}
+      MEM0_CLOUDFLARE_ACCESS_CLIENT_ID: ${{ secrets.MEM0_CLOUDFLARE_ACCESS_CLIENT_ID }}
+      MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET: ${{ secrets.MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET }}
 ```
 
 You can generate that workflow and path-rule files in a target repository:
@@ -113,13 +113,34 @@ You can generate that workflow and path-rule files in a target repository:
   --tenant mimr-tech
 ```
 
+Set the target repository secrets with GitHub CLI:
+
+```bash
+gh secret set MEM0_API_URL --repo tom-miy/target-repository --body "https://mem0-api.example.com"
+gh secret set MEM0_CLOUDFLARE_ACCESS_CLIENT_ID --repo tom-miy/target-repository --body "..."
+gh secret set MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET --repo tom-miy/target-repository --body "..."
+```
+
+For organization-wide reuse, use organization secrets with selected repository
+access:
+
+```bash
+gh secret set MEM0_CLOUDFLARE_ACCESS_CLIENT_ID \
+  --org tom-miy \
+  --visibility selected \
+  --repos target-repository,another-repository \
+  --body "..."
+```
+
 The reusable workflow checks out the source repository, checks out this platform
 repository for the ingestion CLI, sets up `uv`, creates the platform `.venv`,
 and builds the file list from `sync_mode`.
 For repository sync from GitHub Actions, `MEM0_API_URL` should be the
 Cloudflare-protected mem0 API hostname, not the internal compose URL.
-GitHub Actions authenticates to Cloudflare Access with
-`CLOUDFLARE_ACCESS_CLIENT_ID` and `CLOUDFLARE_ACCESS_CLIENT_SECRET`.
+GitHub Actions authenticates to Cloudflare Access with repository secrets named
+`MEM0_CLOUDFLARE_ACCESS_CLIENT_ID` and `MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET`.
+`MEM0_API_KEY` is optional and only needed when the mem0 endpoint or a custom
+gateway requires a Bearer token.
 `CLOUDFLARE_TUNNEL_TOKEN` is only used by the platform runtime's
 `cloudflared` service.
 

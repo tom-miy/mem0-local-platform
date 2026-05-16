@@ -38,9 +38,9 @@ on:
         required: true
       MEM0_API_KEY:
         required: false
-      CLOUDFLARE_ACCESS_CLIENT_ID:
+      MEM0_CLOUDFLARE_ACCESS_CLIENT_ID:
         required: true
-      CLOUDFLARE_ACCESS_CLIENT_SECRET:
+      MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET:
         required: true
 
 jobs:
@@ -112,8 +112,8 @@ jobs:
         env:
           MEM0_API_URL: ${{ secrets.MEM0_API_URL }}
           MEM0_API_KEY: ${{ secrets.MEM0_API_KEY }}
-          CLOUDFLARE_ACCESS_CLIENT_ID: ${{ secrets.CLOUDFLARE_ACCESS_CLIENT_ID }}
-          CLOUDFLARE_ACCESS_CLIENT_SECRET: ${{ secrets.CLOUDFLARE_ACCESS_CLIENT_SECRET }}
+          CLOUDFLARE_ACCESS_CLIENT_ID: ${{ secrets.MEM0_CLOUDFLARE_ACCESS_CLIENT_ID }}
+          CLOUDFLARE_ACCESS_CLIENT_SECRET: ${{ secrets.MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET }}
           TENANT: ${{ inputs.tenant || 'mimr-tech' }}
           REPO_NAME: ${{ inputs.repo || github.event.repository.name }}
         shell: bash

@@ -13,12 +13,73 @@ mem0 API に到達できる状態にします。
 GitHub リポジトリのシークレット:
 
 - `MEM0_API_URL`
-- `MEM0_API_KEY`
-- `CLOUDFLARE_ACCESS_CLIENT_ID`
-- `CLOUDFLARE_ACCESS_CLIENT_SECRET`
+- `MEM0_CLOUDFLARE_ACCESS_CLIENT_ID`
+- `MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET`
 
 `MEM0_API_URL` は Cloudflare Access で保護されたホスト名を使います。
 Compose 内部の `http://mem0:8000` は使いません。
+
+`MEM0_API_KEY` は任意です。
+Cloudflare Access で保護した self-hosted 実行環境では未設定で構いません。
+mem0 の SaaS API、または独自 API gateway 側で Bearer token が必要な場合だけ設定します。
+
+GitHub CLI で設定する例:
+
+```bash
+gh secret set MEM0_API_URL \
+  --repo tom-miy/target-repository \
+  --body "https://mem0-api.example.com"
+
+gh secret set MEM0_CLOUDFLARE_ACCESS_CLIENT_ID \
+  --repo tom-miy/target-repository \
+  --body "..."
+
+gh secret set MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET \
+  --repo tom-miy/target-repository \
+  --body "..."
+```
+
+dotenv 形式のファイルからまとめて設定することもできます。
+
+```bash
+gh secret set --repo tom-miy/target-repository -f mem0.github-secrets.env
+```
+
+`mem0.github-secrets.env` の例:
+
+```env
+MEM0_API_URL=https://mem0-api.example.com
+MEM0_CLOUDFLARE_ACCESS_CLIENT_ID=...
+MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET=...
+```
+
+同じ mem0 接続先を Organization 配下の複数リポジトリで使う場合は、
+Organization secret として設定できます。
+
+```bash
+gh secret set MEM0_API_URL \
+  --org tom-miy \
+  --visibility selected \
+  --repos target-repository,another-repository \
+  --body "https://mem0-api.example.com"
+
+gh secret set MEM0_CLOUDFLARE_ACCESS_CLIENT_ID \
+  --org tom-miy \
+  --visibility selected \
+  --repos target-repository,another-repository \
+  --body "..."
+
+gh secret set MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET \
+  --org tom-miy \
+  --visibility selected \
+  --repos target-repository,another-repository \
+  --body "..."
+```
+
+Organization 内の private リポジトリ全体に使わせる場合は `--visibility private`、
+public リポジトリにも使わせる場合だけ `--visibility all` を使います。
+個人アカウントでは GitHub Actions の secret はリポジトリ単位です。
+`gh secret set --user` は Codespaces 用であり、Actions 用ではありません。
 
 GitHub Actions は Cloudflare Access のサービストークンを HTTP ヘッダーとして送り、
 Tunnel の先へ接続します。`CLOUDFLARE_TUNNEL_TOKEN` は Actions には渡しません。
@@ -80,8 +141,8 @@ jobs:
     secrets:
       MEM0_API_URL: ${{ secrets.MEM0_API_URL }}
       MEM0_API_KEY: ${{ secrets.MEM0_API_KEY }}
-      CLOUDFLARE_ACCESS_CLIENT_ID: ${{ secrets.CLOUDFLARE_ACCESS_CLIENT_ID }}
-      CLOUDFLARE_ACCESS_CLIENT_SECRET: ${{ secrets.CLOUDFLARE_ACCESS_CLIENT_SECRET }}
+      MEM0_CLOUDFLARE_ACCESS_CLIENT_ID: ${{ secrets.MEM0_CLOUDFLARE_ACCESS_CLIENT_ID }}
+      MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET: ${{ secrets.MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET }}
 ```
 
 パス設定を手動で追加する場合は、次も追加します。

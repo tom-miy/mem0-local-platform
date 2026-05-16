@@ -155,8 +155,8 @@ jobs:
     secrets:
       MEM0_API_URL: \${{ secrets.MEM0_API_URL }}
       MEM0_API_KEY: \${{ secrets.MEM0_API_KEY }}
-      CLOUDFLARE_ACCESS_CLIENT_ID: \${{ secrets.CLOUDFLARE_ACCESS_CLIENT_ID }}
-      CLOUDFLARE_ACCESS_CLIENT_SECRET: \${{ secrets.CLOUDFLARE_ACCESS_CLIENT_SECRET }}
+      MEM0_CLOUDFLARE_ACCESS_CLIENT_ID: \${{ secrets.MEM0_CLOUDFLARE_ACCESS_CLIENT_ID }}
+      MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET: \${{ secrets.MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET }}
 YAML
 
   write_file "$dest/.mem0-sync.yml" <<'EOF'
@@ -236,9 +236,9 @@ Next steps:
   2. Adjust .mem0-sync.yml.
   3. Configure these repository secrets:
      MEM0_API_URL
-     MEM0_API_KEY
-     CLOUDFLARE_ACCESS_CLIENT_ID
-     CLOUDFLARE_ACCESS_CLIENT_SECRET
+     MEM0_CLOUDFLARE_ACCESS_CLIENT_ID
+     MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET
+     MEM0_API_KEY only if the mem0 endpoint requires a Bearer token
   4. Commit the generated files.
 EOF
 }

@@ -13,12 +13,73 @@ mem0 API through Cloudflare Access.
 Set these GitHub repository secrets:
 
 - `MEM0_API_URL`
-- `MEM0_API_KEY`
-- `CLOUDFLARE_ACCESS_CLIENT_ID`
-- `CLOUDFLARE_ACCESS_CLIENT_SECRET`
+- `MEM0_CLOUDFLARE_ACCESS_CLIENT_ID`
+- `MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET`
 
 `MEM0_API_URL` should be the Cloudflare-protected hostname. Do not use the
 internal compose URL from GitHub Actions.
+
+`MEM0_API_KEY` is optional. Leave it unset for the default self-hosted runtime
+protected by Cloudflare Access. Set it only when the mem0 endpoint itself, a SaaS
+mem0 API, or a custom gateway requires a Bearer token.
+
+Set them with GitHub CLI:
+
+```bash
+gh secret set MEM0_API_URL \
+  --repo tom-miy/target-repository \
+  --body "https://mem0-api.example.com"
+
+gh secret set MEM0_CLOUDFLARE_ACCESS_CLIENT_ID \
+  --repo tom-miy/target-repository \
+  --body "..."
+
+gh secret set MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET \
+  --repo tom-miy/target-repository \
+  --body "..."
+```
+
+Or load them from a dotenv-formatted file:
+
+```bash
+gh secret set --repo tom-miy/target-repository -f mem0.github-secrets.env
+```
+
+Example `mem0.github-secrets.env`:
+
+```env
+MEM0_API_URL=https://mem0-api.example.com
+MEM0_CLOUDFLARE_ACCESS_CLIENT_ID=...
+MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET=...
+```
+
+If many repositories under the same organization use the same mem0 endpoint,
+store the secrets at the organization level instead:
+
+```bash
+gh secret set MEM0_API_URL \
+  --org tom-miy \
+  --visibility selected \
+  --repos target-repository,another-repository \
+  --body "https://mem0-api.example.com"
+
+gh secret set MEM0_CLOUDFLARE_ACCESS_CLIENT_ID \
+  --org tom-miy \
+  --visibility selected \
+  --repos target-repository,another-repository \
+  --body "..."
+
+gh secret set MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET \
+  --org tom-miy \
+  --visibility selected \
+  --repos target-repository,another-repository \
+  --body "..."
+```
+
+Use `--visibility private` for all private repositories in the organization, or
+`--visibility all` only when public repositories should also receive the secret.
+For personal accounts, GitHub Actions secrets are repository-level; user-level
+`gh secret set --user` is for Codespaces, not Actions.
 
 ## Install
 
@@ -71,8 +132,8 @@ jobs:
     secrets:
       MEM0_API_URL: ${{ secrets.MEM0_API_URL }}
       MEM0_API_KEY: ${{ secrets.MEM0_API_KEY }}
-      CLOUDFLARE_ACCESS_CLIENT_ID: ${{ secrets.CLOUDFLARE_ACCESS_CLIENT_ID }}
-      CLOUDFLARE_ACCESS_CLIENT_SECRET: ${{ secrets.CLOUDFLARE_ACCESS_CLIENT_SECRET }}
+      MEM0_CLOUDFLARE_ACCESS_CLIENT_ID: ${{ secrets.MEM0_CLOUDFLARE_ACCESS_CLIENT_ID }}
+      MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET: ${{ secrets.MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET }}
 ```
 
 ## Full Sync

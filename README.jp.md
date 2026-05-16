@@ -105,8 +105,8 @@ jobs:
     secrets:
       MEM0_API_URL: ${{ secrets.MEM0_API_URL }}
       MEM0_API_KEY: ${{ secrets.MEM0_API_KEY }}
-      CLOUDFLARE_ACCESS_CLIENT_ID: ${{ secrets.CLOUDFLARE_ACCESS_CLIENT_ID }}
-      CLOUDFLARE_ACCESS_CLIENT_SECRET: ${{ secrets.CLOUDFLARE_ACCESS_CLIENT_SECRET }}
+      MEM0_CLOUDFLARE_ACCESS_CLIENT_ID: ${{ secrets.MEM0_CLOUDFLARE_ACCESS_CLIENT_ID }}
+      MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET: ${{ secrets.MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET }}
 ```
 
 通常の push では `changed` を使います。
@@ -126,6 +126,25 @@ jobs:
   --target github-actions \
   --target-dir /path/to/repository \
   --tenant mimr-tech
+```
+
+対象リポジトリの GitHub secret は GitHub CLI でも設定できます。
+
+```bash
+gh secret set MEM0_API_URL --repo tom-miy/target-repository --body "https://mem0-api.example.com"
+gh secret set MEM0_CLOUDFLARE_ACCESS_CLIENT_ID --repo tom-miy/target-repository --body "..."
+gh secret set MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET --repo tom-miy/target-repository --body "..."
+```
+
+Organization 配下で共有する場合は、アクセス可能なリポジトリを指定して
+Organization secret として設定できます。
+
+```bash
+gh secret set MEM0_CLOUDFLARE_ACCESS_CLIENT_ID \
+  --org tom-miy \
+  --visibility selected \
+  --repos target-repository,another-repository \
+  --body "..."
 ```
 
 Raycast などローカルツールから短いメモを入れる場合は
@@ -262,8 +281,11 @@ GitHub Actions の `MEM0_API_URL` には、Cloudflare Access で保護された
 ホスト名を設定します。Compose 内部の `http://mem0:8000` は外部から使いません。
 
 GitHub Actions は Cloudflare Access のサービストークンで認証します。
-呼び出し側ワークフローには `CLOUDFLARE_ACCESS_CLIENT_ID` と
-`CLOUDFLARE_ACCESS_CLIENT_SECRET` を渡します。
+呼び出し側ワークフローには GitHub secret 名として
+`MEM0_CLOUDFLARE_ACCESS_CLIENT_ID` と
+`MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET` を渡します。
+`MEM0_API_KEY` は任意で、mem0 API または独自 gateway が Bearer token を
+要求する場合だけ使います。
 `CLOUDFLARE_TUNNEL_TOKEN` は、プラットフォーム側の `cloudflared` サービスだけが使います。
 
 ## バックエンドの責務
