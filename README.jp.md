@@ -85,6 +85,8 @@ on:
   workflow_dispatch:
     inputs:
       sync_mode:
+        description: changed は差分同期、full は全体同期
+        required: true
         type: choice
         options:
           - changed
@@ -106,6 +108,10 @@ jobs:
 
 通常の push では `changed` を使います。
 初回投入、除外ルール変更後、mem0 の状態を再構築した後は `full` を使います。
+
+手動で全内容を取り込む場合は、対象リポジトリの GitHub 画面で
+`Actions` から `Sync Repository Memory` を選び、`Run workflow` で
+`sync_mode` に `full` を指定します。
 
 詳細は [別リポジトリへの導入手順](docs/conventions/adopting-repository.jp.md)
 を見てください。
@@ -136,6 +142,13 @@ Raycast などローカルツールから短いメモを入れる場合は
 - `exclude_paths`: 除外パス
 
 `exclude_paths` は `include_paths` より先に評価されます。
+
+同期モードの使い分け:
+
+- `changed`: push された差分ファイルだけを取り込みます。
+- `full`: Git 管理下の全ファイルから対象 Markdown を取り込みます。
+
+`full` は自動 push ではなく、初回投入や復旧時に手動実行するためのモードです。
 
 ## Markdown の索引作成
 
@@ -268,6 +281,9 @@ mise run up
 ```bash
 mise run ingest-dry-run
 ```
+
+Ollama、Ollama Cloud、OpenRouter、OpenAI 互換ルーターの設定例は
+[モデルプロバイダ設定](docs/architecture/model-provider-settings.jp.md) を見てください。
 
 ローカル検証:
 

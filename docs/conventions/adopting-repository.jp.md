@@ -77,6 +77,38 @@ jobs:
 - mem0、Qdrant、FalkorDB の状態を再構築した後
 - 取り込み漏れを修復したいとき
 
+## 手動で全内容を取り込む
+
+できます。
+
+対象リポジトリ側に上の `workflow_dispatch` が入っていれば、GitHub 画面から
+全内容取り込みを実行できます。
+
+手順:
+
+1. 対象リポジトリの GitHub 画面を開きます。
+2. `Actions` を開きます。
+3. `Sync Repository Memory` を選びます。
+4. `Run workflow` を押します。
+5. `sync_mode` で `full` を選びます。
+6. 対象ブランチを確認して実行します。
+
+この実行では、Git 管理下のファイル一覧を作り、その中から include/exclude
+ルールに合う Markdown だけを mem0 に送ります。
+`node_modules`、`dist`、`coverage` などの除外パスは取り込みません。
+
+GitHub CLI を使う場合:
+
+```bash
+gh workflow run "Sync Repository Memory" \
+  --ref main \
+  -f sync_mode=full
+```
+
+通常の push では `sync_mode` が指定されないため、呼び出し側ワークフローの
+式で `changed` になります。つまり、push は差分同期、手動実行は選択した
+`sync_mode` で同期します。
+
 ## include/exclude ルール
 
 デフォルトの include:

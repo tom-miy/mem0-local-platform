@@ -81,6 +81,8 @@ on:
   workflow_dispatch:
     inputs:
       sync_mode:
+        description: changed indexes push diffs, full indexes all eligible files.
+        required: true
         type: choice
         options:
           - changed
@@ -131,6 +133,10 @@ GitHub Actions authenticates to Cloudflare Access with
 
 Use `changed` for normal push sync. Use `full` for initial indexing, policy
 changes, or recovery after rebuilding mem0 state.
+
+To run a full sync manually, open the target repository in GitHub, go to
+`Actions`, choose `Sync Repository Memory`, run the workflow, and select
+`sync_mode=full`.
 
 Indexed paths:
 
@@ -281,6 +287,9 @@ cp mem0.env.example mem0.env
 ```
 
 Japanese MCP setup guide: [docs/conventions/mcp-setup.jp.md](docs/conventions/mcp-setup.jp.md)
+
+Model provider examples:
+[docs/architecture/model-provider-settings.md](docs/architecture/model-provider-settings.md)
 
 Run local validation:
 
