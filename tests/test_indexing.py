@@ -189,6 +189,24 @@ Subscribe to the channel
             self.assertEqual(vector_config["host"], "qdrant")  # type: ignore[index]
             self.assertEqual(vector_config["embedding_model_dims"], 768)  # type: ignore[index]
 
+    def test_markdown_docs_have_japanese_counterparts(self) -> None:
+        markdown_files = [
+            path
+            for path in Path(".").rglob("*.md")
+            if ".venv" not in path.parts
+            and ".git" not in path.parts
+            and path.name != "AGENTS.md"
+            and not path.name.endswith(".jp.md")
+        ]
+
+        missing = [path.as_posix() for path in markdown_files if not japanese_counterpart(path).exists()]
+
+        self.assertEqual(missing, [])
+
+
+def japanese_counterpart(path: Path) -> Path:
+    return path.with_name(f"{path.stem}.jp.md")
+
 
 if __name__ == "__main__":
     unittest.main()
