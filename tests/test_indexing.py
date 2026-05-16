@@ -1,0 +1,86 @@
+from pathlib import Path
+import unittest
+
+from scripts.chunk_markdown import chunk_markdown, stable_chunk_id
+from scripts.cleanup_text import cleanup_text
+from scripts.ingest_repo import load_patterns, normalize_repo_path, should_index
+from mem0_local_platform_mcp.tenant_policy import TenantPolicy
+
+
+class IndexingTests(unittest.TestCase):
+    def test_cleanup_removes_transcript_noise(self) -> None:
+        text = """
+This transcript may contain mentions of ChatGPT...
+# Title
+Useful content.
+Subscribe to the channel
+"""
+        self.assertEqual(cleanup_text(text), "# Title\nUseful content.\n")
+
+    def test_chunk_markdown_preserves_heading_metadata(self) -> None:
+        chunks = chunk_markdown(
+            "# Title\nIntro\n\n## Details\nBody",
+            tenant="work",
+            repo="example",
+            path="docs/example.md",
+            tags=("mem0",),
+        )
+
+        self.assertEqual(len(chunks), 2)
+        self.assertEqual(chunks[1].metadata["heading"], "Title > Details")
+        self.assertEqual(chunks[1].metadata["tenant"], "work")
+        self.assertEqual(chunks[1].metadata["repo"], "example")
+        self.assertEqual(chunks[1].metadata["type"], "doc")
+        self.assertEqual(chunks[1].metadata["tags"], ["mem0"])
+
+    def test_stable_chunk_id_uses_repo_path_heading(self) -> None:
+        self.assertEqual(
+            stable_chunk_id(repo="repo", path="README.md", heading="Document"),
+            stable_chunk_id(repo="repo", path="README.md", heading="Document"),
+        )
+        self.assertNotEqual(
+            stable_chunk_id(repo="repo-a", path="README.md", heading="Document"),
+            stable_chunk_id(repo="repo-b", path="README.md", heading="Document"),
+        )
+
+    def test_should_index_markdown_first_paths(self) -> None:
+        self.assertTrue(should_index(Path("README.md")))
+        self.assertTrue(should_index(Path("docs/e2e.md")))
+        self.assertTrue(should_index(Path("docs/nested/e2e.md")))
+        self.assertTrue(should_index(Path("adr/0001-record.md")))
+        self.assertFalse(should_index(Path("node_modules/pkg/README.md")))
+        self.assertFalse(should_index(Path("src/main.py")))
+
+    def test_should_index_accepts_workflow_path_rules(self) -> None:
+        self.assertTrue(
+            should_index(
+                Path("notes/project.md"),
+                include_patterns=("notes/**/*.md", "notes/*.md"),
+                exclude_patterns=("notes/private/**",),
+            )
+        )
+        self.assertFalse(
+            should_index(
+                Path("notes/private/project.md"),
+                include_patterns=("notes/**/*.md", "notes/*.md"),
+                exclude_patterns=("notes/private/**",),
+            )
+        )
+
+    def test_load_patterns_prefers_supplied_rules(self) -> None:
+        self.assertEqual(load_patterns(["README.md"], None, ("docs/**/*.md",)), ("README.md",))
+
+    def test_normalize_repo_path_rejects_traversal(self) -> None:
+        self.assertEqual(normalize_repo_path(Path("/docs/e2e.md")), Path("docs/e2e.md"))
+        self.assertIsNone(normalize_repo_path(Path("../README.md")))
+
+    def test_tenant_policy_rejects_out_of_boundary_reads(self) -> None:
+        policy = TenantPolicy(read_tenants=("vault", "work"), write_tenant="work")
+
+        self.assertEqual(policy.readable(["work"]), ("work",))
+        with self.assertRaises(ValueError):
+            policy.readable(["client-secret"])
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,0 +1,282 @@
+"""Ingest changed Markdown files from a Git repository into mem0."""
+
+from __future__ import annotations
+
+import argparse
+import fnmatch
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+from typing import Any, Iterable
+
+from scripts.chunk_markdown import MarkdownChunk, chunk_markdown
+
+
+DEFAULT_INCLUDE_PATTERNS = (
+    "README.md",
+    "docs/*.md",
+    "docs/**/*.md",
+    "adr/*.md",
+    "adr/**/*.md",
+    "adrs/*.md",
+    "adrs/**/*.md",
+)
+DEFAULT_EXCLUDE_PATTERNS = (
+    ".git/**",
+    ".venv/**",
+    "node_modules/**",
+    "**/node_modules/**",
+    "dist/**",
+    "**/dist/**",
+    "vendor/**",
+    "**/vendor/**",
+    "coverage/**",
+    "**/coverage/**",
+    "build/**",
+    "**/build/**",
+    "__pycache__/**",
+    "**/__pycache__/**",
+    "*.pyc",
+    "**/*.pyc",
+    "*.lock",
+    "**/*.lock",
+    "package-lock.json",
+    "**/package-lock.json",
+    "pnpm-lock.yaml",
+    "**/pnpm-lock.yaml",
+    "yarn.lock",
+    "**/yarn.lock",
+)
+
+
+def main() -> int:
+    args = parse_args()
+    root = Path(args.root).resolve()
+    repo = args.repo or detect_repo_name(root)
+    files = list(resolve_changed_files(root, args))
+    include_patterns = load_patterns(args.include, args.include_from, DEFAULT_INCLUDE_PATTERNS)
+    exclude_patterns = load_patterns(args.exclude, args.exclude_from, DEFAULT_EXCLUDE_PATTERNS)
+
+    chunks: list[MarkdownChunk] = []
+    indexed_files = 0
+    for rel_path in files:
+        normalized = normalize_repo_path(rel_path)
+        if normalized is None or not should_index(
+            normalized,
+            include_patterns=include_patterns,
+            exclude_patterns=exclude_patterns,
+        ):
+            continue
+
+        source = safe_source_path(root, normalized)
+        if source is None or not source.exists():
+            continue
+        indexed_files += 1
+        text = source.read_text(encoding="utf-8")
+        chunks.extend(
+            chunk_markdown(
+                text,
+                tenant=args.tenant,
+                repo=repo,
+                path=normalized.as_posix(),
+                tags=tuple(args.tag),
+            )
+        )
+
+    payloads = [chunk_to_payload(chunk) for chunk in chunks]
+    if args.json:
+        print(json.dumps(payloads, indent=2, ensure_ascii=False))
+
+    if args.dry_run:
+        print(
+            f"dry-run: {len(files)} candidate files, {indexed_files} indexed files, "
+            f"{len(chunks)} chunks",
+            file=sys.stderr,
+        )
+        return 0
+
+    client = Mem0HttpClient(
+        api_url=args.mem0_url,
+        api_key=args.mem0_api_key,
+        agent_id=args.agent_id,
+    )
+    for chunk in chunks:
+        client.upsert(chunk)
+
+    print(
+        f"ingested: {len(files)} candidate files, {indexed_files} indexed files, "
+        f"{len(chunks)} chunks",
+        file=sys.stderr,
+    )
+    return 0
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", default=".", help="repository root to inspect")
+    parser.add_argument("--repo", help="repository metadata name; defaults to git directory name")
+    parser.add_argument("--tenant", default=os.getenv("MEM0_DEFAULT_TENANT", "work"))
+    parser.add_argument("--tag", action="append", default=[])
+    parser.add_argument("--changed-files", nargs="*", help="explicit changed file list")
+    parser.add_argument("--changed-files-file", help="newline-delimited changed file list")
+    parser.add_argument("--since-ref", help="git ref used to compute changed files")
+    parser.add_argument("--include", action="append", default=[], help="glob path to index")
+    parser.add_argument("--include-from", help="newline-delimited include glob file")
+    parser.add_argument("--exclude", action="append", default=[], help="glob path to ignore")
+    parser.add_argument("--exclude-from", help="newline-delimited exclude glob file")
+    parser.add_argument("--mem0-url", default=os.getenv("MEM0_API_URL", "http://localhost:8000"))
+    parser.add_argument("--mem0-api-key", default=os.getenv("MEM0_API_KEY", ""))
+    parser.add_argument("--agent-id", default=os.getenv("MEM0_AGENT_ID", "github-repo-indexer"))
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--json", action="store_true")
+    return parser.parse_args()
+
+
+def resolve_changed_files(root: Path, args: argparse.Namespace) -> Iterable[Path]:
+    if args.changed_files_file:
+        return [
+            Path(line)
+            for line in Path(args.changed_files_file).read_text(encoding="utf-8").splitlines()
+            if line
+        ]
+
+    if args.changed_files is not None:
+        return [Path(path) for path in args.changed_files if path]
+
+    if args.since_ref:
+        result = subprocess.run(
+            ["git", "diff", "--name-only", "--diff-filter=ACMR", args.since_ref, "HEAD"],
+            cwd=root,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return [Path(line) for line in result.stdout.splitlines() if line]
+
+    result = subprocess.run(
+        ["git", "ls-files"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return [Path(line) for line in result.stdout.splitlines() if line]
+
+
+def should_index(
+    path: Path,
+    *,
+    include_patterns: tuple[str, ...] = DEFAULT_INCLUDE_PATTERNS,
+    exclude_patterns: tuple[str, ...] = DEFAULT_EXCLUDE_PATTERNS,
+) -> bool:
+    normalized = path.as_posix()
+    if matches_any(normalized, exclude_patterns):
+        return False
+    return matches_any(normalized, include_patterns)
+
+
+def load_patterns(
+    cli_patterns: list[str],
+    patterns_file: str | None,
+    defaults: tuple[str, ...],
+) -> tuple[str, ...]:
+    patterns: list[str] = []
+    if patterns_file:
+        patterns.extend(read_pattern_file(Path(patterns_file)))
+    patterns.extend(cli_patterns)
+    return tuple(patterns or defaults)
+
+
+def read_pattern_file(path: Path) -> list[str]:
+    return [
+        line.strip()
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+
+
+def matches_any(path: str, patterns: tuple[str, ...]) -> bool:
+    return any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns)
+
+
+def normalize_repo_path(path: Path) -> Path | None:
+    normalized = Path(path.as_posix().lstrip("/"))
+    if normalized.is_absolute() or ".." in normalized.parts:
+        return None
+    return normalized
+
+
+def safe_source_path(root: Path, rel_path: Path) -> Path | None:
+    source = (root / rel_path).resolve()
+    try:
+        source.relative_to(root)
+    except ValueError:
+        return None
+    return source
+
+
+def detect_repo_name(root: Path) -> str:
+    result = subprocess.run(
+        ["git", "config", "--get", "remote.origin.url"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    remote = result.stdout.strip()
+    if remote:
+        return remote.removesuffix(".git").split("/")[-1]
+    return root.name
+
+
+def chunk_to_payload(chunk: MarkdownChunk) -> dict[str, object]:
+    return {
+        "id": chunk.stable_id,
+        "memory": chunk.content,
+        "metadata": chunk.metadata,
+    }
+
+
+class Mem0HttpClient:
+    def __init__(self, *, api_url: str, api_key: str, agent_id: str) -> None:
+        self.api_url = api_url.rstrip("/")
+        self.headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+        self.agent_id = agent_id
+        self.add_path = os.getenv("MEM0_ADD_PATH", "/add")
+        self.delete_path = os.getenv("MEM0_DELETE_PATH", "/v1/memories/")
+
+    def upsert(self, chunk: MarkdownChunk) -> None:
+        import httpx
+
+        metadata = dict(chunk.metadata)
+        metadata["stable_id"] = chunk.stable_id
+
+        with httpx.Client(headers=self.headers, timeout=30) as client:
+            self.delete_existing(client, stable_id=chunk.stable_id)
+            response = client.post(
+                f"{self.api_url}{self.add_path}",
+                json={
+                    "messages": [{"role": "user", "content": chunk.content}],
+                    "user_id": metadata["tenant"],
+                    "agent_id": self.agent_id,
+                    "metadata": metadata,
+                    "infer": False,
+                },
+            )
+            response.raise_for_status()
+
+    def delete_existing(self, client: Any, *, stable_id: str) -> None:
+        filters = {"stable_id": stable_id}
+        response = client.delete(
+            f"{self.api_url}{self.delete_path}",
+            params={"filters": json.dumps(filters)},
+        )
+        if response.status_code == 404:
+            return
+        response.raise_for_status()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,29 @@
+name: Sync Repository Memory
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      sync_mode:
+        description: Use changed for push diffs or full for complete repository indexing.
+        required: true
+        type: choice
+        options:
+          - changed
+          - full
+        default: full
+
+jobs:
+  sync:
+    uses: ./.github/workflows/reusable-sync.yml
+    with:
+      sync_mode: ${{ github.event.inputs.sync_mode || 'changed' }}
+      tenant: work
+      repo: mem0-local-platform
+      platform_repository: ${{ github.repository }}
+      platform_ref: ${{ github.ref_name }}
+    secrets:
+      MEM0_API_URL: ${{ secrets.MEM0_API_URL }}
+      MEM0_API_KEY: ${{ secrets.MEM0_API_KEY }}

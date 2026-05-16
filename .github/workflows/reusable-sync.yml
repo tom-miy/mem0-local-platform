@@ -1,0 +1,150 @@
+name: Reusable mem0 Sync
+
+on:
+  workflow_call:
+    inputs:
+      sync_mode:
+        description: Use changed for push diffs or full for complete repository indexing.
+        required: false
+        type: string
+        default: changed
+      tenant:
+        description: Tenant security boundary to write into.
+        required: false
+        type: string
+        default: work
+      repo:
+        description: Repository metadata name. Defaults to owner/repo basename.
+        required: false
+        type: string
+        default: ""
+      platform_repository:
+        description: Repository that contains the reusable sync implementation.
+        required: false
+        type: string
+        default: mimr-tech/mem0-local-platform
+      platform_ref:
+        description: Ref for the platform repository checkout.
+        required: false
+        type: string
+        default: main
+      include_paths:
+        description: Newline-delimited glob patterns to index.
+        required: false
+        type: string
+        default: |
+          README.md
+          docs/*.md
+          docs/**/*.md
+          adr/*.md
+          adr/**/*.md
+          adrs/*.md
+          adrs/**/*.md
+      exclude_paths:
+        description: Newline-delimited glob patterns to ignore.
+        required: false
+        type: string
+        default: |
+          .git/**
+          .venv/**
+          node_modules/**
+          **/node_modules/**
+          dist/**
+          **/dist/**
+          vendor/**
+          **/vendor/**
+          coverage/**
+          **/coverage/**
+          build/**
+          **/build/**
+          __pycache__/**
+          **/__pycache__/**
+          *.pyc
+          **/*.pyc
+          *.lock
+          **/*.lock
+          package-lock.json
+          **/package-lock.json
+          pnpm-lock.yaml
+          **/pnpm-lock.yaml
+          yarn.lock
+          **/yarn.lock
+    secrets:
+      MEM0_API_URL:
+        required: true
+      MEM0_API_KEY:
+        required: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout source repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          path: source
+          fetch-depth: 0
+
+      - name: Checkout mem0-local-platform
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          repository: ${{ inputs.platform_repository || github.repository }}
+          ref: ${{ inputs.platform_ref || github.ref_name }}
+          path: platform
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081
+
+      - name: Write path rules
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/include-paths.txt" <<'EOF'
+          ${{ inputs.include_paths }}
+          EOF
+          cat > "$RUNNER_TEMP/exclude-paths.txt" <<'EOF'
+          ${{ inputs.exclude_paths }}
+          EOF
+
+      - name: Detect files to sync
+        working-directory: source
+        env:
+          SYNC_MODE: ${{ inputs.sync_mode }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$SYNC_MODE" = "full" ]; then
+            git ls-files > "$RUNNER_TEMP/sync-files.txt"
+          elif [ "$SYNC_MODE" = "changed" ]; then
+            if [ -n "${{ github.event.before || '' }}" ] &&
+               [ "${{ github.event.before || '' }}" != "0000000000000000000000000000000000000000" ]; then
+              git diff --name-only --diff-filter=ACMR "${{ github.event.before }}" "$GITHUB_SHA" > "$RUNNER_TEMP/sync-files.txt"
+            elif git rev-parse HEAD^ >/dev/null 2>&1; then
+              git diff --name-only --diff-filter=ACMR HEAD^ HEAD > "$RUNNER_TEMP/sync-files.txt"
+            else
+              git ls-files > "$RUNNER_TEMP/sync-files.txt"
+            fi
+          else
+            echo "sync_mode must be 'changed' or 'full': $SYNC_MODE" >&2
+            exit 2
+          fi
+
+      - name: Sync files to mem0
+        working-directory: platform
+        env:
+          MEM0_API_URL: ${{ secrets.MEM0_API_URL }}
+          MEM0_API_KEY: ${{ secrets.MEM0_API_KEY }}
+          TENANT: ${{ inputs.tenant || 'work' }}
+          REPO_NAME: ${{ inputs.repo || github.event.repository.name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run python -m scripts.ingest_repo \
+            --root ../source \
+            --tenant "$TENANT" \
+            --repo "$REPO_NAME" \
+            --changed-files-file "$RUNNER_TEMP/sync-files.txt" \
+            --include-from "$RUNNER_TEMP/include-paths.txt" \
+            --exclude-from "$RUNNER_TEMP/exclude-paths.txt"

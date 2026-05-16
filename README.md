@@ -1,0 +1,284 @@
+# mem0-local-platform
+
+Developer Knowledge Infrastructure for local-first AI-assisted engineering.
+
+This repository runs a self-hosted mem0 layer backed by FalkorDB and Qdrant,
+exposes tenant-aware memory tools over MCP, and provides one reusable GitHub
+Actions workflow for keeping repository knowledge in sync.
+
+mem0 is not the source of truth. Git repositories, Markdown docs, ADRs, and
+Obsidian notes remain canonical. mem0 is the retrieval cache and runtime context
+layer that agents use while working.
+
+## Architecture
+
+```text
+Git repository
+  -> GitHub push
+  -> reusable mem0 sync workflow
+  -> ingest-to-mem0 CLI
+  -> Cloudflare Tunnel
+  -> mem0
+     -> FalkorDB graph memory
+     -> Qdrant vector retrieval
+  -> MCP
+  -> Codex / Claude / local agents
+```
+
+## Memory Flow
+
+1. A repository changes through normal Git work.
+2. GitHub push triggers `.github/workflows/reusable-sync.yml`.
+3. The workflow selects changed files or all tracked files.
+4. `scripts/ingest_repo.py` indexes Markdown-first content.
+5. Chunks are upserted with stable IDs based on `repo + path + heading`.
+6. Agents retrieve memory through MCP tools with tenant filters applied.
+
+## Tenant Strategy
+
+Tenant is a security boundary. It is not a repository name.
+
+Use tenants for isolation scopes such as:
+
+- `vault`
+- `work`
+- `client-*`
+- `agency-*`
+
+Repository name is metadata:
+
+```json
+{
+  "tenant": "work",
+  "repo": "backend-testing-patterns",
+  "path": "docs/e2e.md"
+}
+```
+
+This avoids tenant explosion while preserving repository-level filtering.
+
+## GitHub Sync Strategy
+
+Workflow logic is centralized here:
+
+```text
+.github/workflows/reusable-sync.yml
+```
+
+That workflow is `workflow_call` only. It is the shared implementation.
+
+Calling repositories should contain only a thin trigger workflow:
+
+```yaml
+name: Sync Repository Memory
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      sync_mode:
+        type: choice
+        options:
+          - changed
+          - full
+        default: full
+
+jobs:
+  sync:
+    uses: mimr-tech/mem0-local-platform/.github/workflows/reusable-sync.yml@main
+    with:
+      sync_mode: ${{ github.event.inputs.sync_mode || 'changed' }}
+      tenant: work
+      include_paths: |
+        README.md
+        docs/*.md
+        docs/**/*.md
+        adr/*.md
+        adr/**/*.md
+      exclude_paths: |
+        node_modules/**
+        **/node_modules/**
+        dist/**
+        **/dist/**
+        coverage/**
+        **/coverage/**
+    secrets:
+      MEM0_API_URL: ${{ secrets.MEM0_API_URL }}
+      MEM0_API_KEY: ${{ secrets.MEM0_API_KEY }}
+```
+
+The reusable workflow checks out the source repository, checks out this platform
+repository for the ingestion CLI, sets up `uv`, and builds the file list from
+`sync_mode`.
+For repository sync from GitHub Actions, `MEM0_API_URL` should be the
+Cloudflare-protected mem0 API hostname, not the internal compose URL.
+
+`sync_mode` controls the file list:
+
+- `changed` indexes files changed by the push diff.
+- `full` indexes all tracked files that pass include/exclude rules.
+
+Use `changed` for normal push sync. Use `full` for initial indexing, policy
+changes, or recovery after rebuilding mem0 state.
+
+Indexed paths:
+
+- `README.md`
+- `docs/**/*.md`
+- `adr/**/*.md`
+- `adrs/**/*.md`
+
+Ignored paths include `node_modules`, `dist`, `vendor`, `coverage`, and build
+artifacts.
+
+The defaults can be overridden per repository through `include_paths` and
+`exclude_paths`. Exclusion applies before inclusion.
+
+## Markdown Indexing
+
+Markdown is chunked by heading. Each chunk preserves:
+
+- tenant
+- repository metadata
+- relative path
+- inferred document type
+- heading hierarchy
+- tags
+
+Stable IDs are SHA-256 hashes of:
+
+```text
+repo:path:heading
+```
+
+## MCP Integration
+
+The FastMCP server exposes:
+
+- `search_memory`
+- `remember`
+- `related_repo_context`
+- `recent_project_memories`
+
+Read and write boundaries are separated:
+
+```yaml
+read_tenants:
+  - vault
+  - work
+write_tenant: work
+```
+
+`remember` always writes to the configured write tenant. Search tools only read
+from configured readable tenants, even when a caller requests a narrower set.
+
+## Cloudflare Setup
+
+Primary access is through Cloudflare Tunnel, Cloudflare Access, and Service
+Token authentication. The compose stack includes `cloudflared`; agent traffic
+should enter through Cloudflare and reach internal services by Docker DNS.
+
+Human OAuth login can be added, but it is not required for the default target.
+
+Required environment variables are listed in `.env.example`:
+
+- `CLOUDFLARE_TUNNEL_TOKEN`
+- `CLOUDFLARE_ACCESS_CLIENT_ID`
+- `CLOUDFLARE_ACCESS_CLIENT_SECRET`
+
+Configure Tunnel routing in Cloudflare:
+
+```text
+mem0-api.example.com -> http://mem0:8000
+mem0-mcp.example.com -> http://mcp:8010
+```
+
+Do not log service tokens or copy them into Markdown docs.
+
+## Backend Responsibilities
+
+FalkorDB stores graph-oriented memory relationships.
+
+Qdrant stores semantic vectors for retrieval.
+
+The local `mem0` API service coordinates memory writes, graph updates, and
+vector search through the mem0 OSS library. This repository keeps source content
+outside mem0 and treats mem0 as rebuildable infrastructure.
+
+## Local Run
+
+Trust and install the local toolchain:
+
+```bash
+mise trust .
+mise install
+mise run setup
+```
+
+Create a local env file:
+
+```bash
+cp .env.example .env
+```
+
+Start the runtime:
+
+```bash
+mise run up
+```
+
+The `mem0` service is built from this repository. It wraps the mem0 OSS Python
+library instead of depending on an unverified external image.
+
+Persistent backend data is stored under `data/` with bind mounts:
+
+```text
+data/falkordb/
+data/qdrant/
+data/mem0/
+```
+
+Back up `data/` with normal filesystem backup tools. The compose file does not
+use Docker named volumes for state.
+
+Run a dry ingestion against this repository:
+
+```bash
+mise run ingest-dry-run
+```
+
+Run the MCP server locally:
+
+```bash
+uv run mem0-local-mcp
+```
+
+Run local validation:
+
+```bash
+mise run check
+```
+
+## Security Model
+
+- Tenant boundaries are isolation boundaries.
+- Repository names are metadata, not authorization boundaries.
+- Git and Markdown remain the canonical source.
+- mem0 can be rebuilt from source content.
+- MCP tools inject tenant filters automatically.
+- Write access is limited to one configured write tenant.
+- Service tokens are used for agent authentication through Cloudflare Access.
+- Secrets and personal data must not be emitted in logs.
+
+## Repository Indexing Lifecycle
+
+1. Author updates Markdown in Git.
+2. Pull request review happens in the source repository.
+3. Merge or push triggers the reusable sync workflow.
+4. Changed Markdown files are cleaned and chunked.
+5. Chunks are upserted into mem0 with stable IDs.
+6. Agents retrieve current context through MCP.
+
+See `docs/architecture/` and `docs/security/` for design notes.

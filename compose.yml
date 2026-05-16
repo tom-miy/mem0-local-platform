@@ -1,0 +1,61 @@
+services:
+  falkordb:
+    image: falkordb/falkordb:latest
+    restart: unless-stopped
+    volumes:
+      - ./data/falkordb:/data
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    restart: unless-stopped
+    volumes:
+      - ./data/qdrant:/qdrant/storage
+
+  mem0:
+    build:
+      context: .
+    restart: unless-stopped
+    depends_on:
+      - falkordb
+      - qdrant
+    env_file:
+      - .env
+    environment:
+      MEM0_GRAPH_STORE_PROVIDER: falkordb
+      FALKORDB_URL: redis://falkordb:6379
+      MEM0_VECTOR_STORE_PROVIDER: qdrant
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+      QDRANT_COLLECTION: developer_memories
+      MEM0_DIR: /data/mem0
+    volumes:
+      - ./data/mem0:/data/mem0
+    expose:
+      - "8000"
+
+  mcp:
+    build:
+      context: .
+    command: ["uv", "run", "mem0-local-mcp"]
+    restart: unless-stopped
+    depends_on:
+      - mem0
+    env_file:
+      - .env
+    expose:
+      - "8010"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    depends_on:
+      - mcp
+      - mem0
+    env_file:
+      - .env
+    command:
+      - tunnel
+      - --no-autoupdate
+      - run
+      - --token
+      - ${CLOUDFLARE_TUNNEL_TOKEN}
