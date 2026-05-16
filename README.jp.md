@@ -2,7 +2,7 @@
 
 開発者向けのローカル AI メモリ基盤です。
 
-このリポジトリは、自前運用の mem0 実行基盤、FalkorDB、Qdrant、
+このリポジトリは、自前で動かす mem0 環境、FalkorDB、Qdrant、
 Cloudflare Tunnel、MCP、GitHub Actions による自動同期をまとめます。
 試作用の RAG デモではなく、実際の AI 支援開発で使う知識基盤を目指します。
 
@@ -108,6 +108,10 @@ jobs:
 初回投入、除外ルール変更後、mem0 の状態を再構築した後は `full` を使います。
 
 詳細は [別リポジトリへの導入手順](docs/conventions/adopting-repository.jp.md)
+を見てください。
+
+Raycast などローカルツールから短いメモを入れる場合は
+[Raycast などローカルツールからの取り込み](docs/conventions/local-tool-ingestion.jp.md)
 を見てください。
 
 ## 共通ワークフロー
@@ -229,7 +233,7 @@ mise run setup
 cp .env.example .env
 ```
 
-実行基盤を起動します。
+Docker Compose でローカル環境を起動します。
 
 ```bash
 mise run up
@@ -246,6 +250,33 @@ mise run ingest-dry-run
 ```bash
 mise run check
 ```
+
+検証で作られたキャッシュを消す場合:
+
+```bash
+mise run clean
+```
+
+Docker Compose や結合テストで作られた `data/` も消す場合:
+
+```bash
+mise run clean-data
+```
+
+Python 仮想環境も作り直したい場合:
+
+```bash
+mise run distclean
+```
+
+全部まとめて消す場合:
+
+```bash
+mise run clean-all
+```
+
+`clean` と `distclean` は `data/` を削除しません。
+FalkorDB、Qdrant、mem0 の状態を消す場合は `clean-data` を明示して実行します。
 
 ## バックアップ
 
@@ -321,6 +352,6 @@ with:
   repo: backend-testing-patterns
 ```
 
-この workflow は、`backend-testing-patterns` の Markdown を
+このワークフローは、`backend-testing-patterns` の Markdown を
 `client-18384728-acme` テナントへ記録します。
-repo 名は metadata として残るため、後から repo 単位で検索できます。
+repo 名はメタデータとして残るため、後から repo 単位で検索できます。

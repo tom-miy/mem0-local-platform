@@ -25,6 +25,7 @@ dev = [
 
 [project.scripts]
 ingest-to-mem0 = "scripts.ingest_repo:main"
+remember-to-mem0 = "scripts.remember_text:main"
 mem0-local-mcp = "mem0_local_platform_mcp.server:main"
 mem0-local-api = "mem0_local_platform_api.server:main"
 

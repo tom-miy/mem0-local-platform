@@ -69,7 +69,7 @@ infra-scripts
 
 ## 読み取りと書き込みの方針
 
-MCP 実行基盤では、読み取り可能テナントと書き込み先テナントを分けます。
+MCP サーバーでは、読み取り可能テナントと書き込み先テナントを分けます。
 
 ```text
 MEM0_READ_TENANTS=vault,work
@@ -126,4 +126,3 @@ MEM0_WRITE_TENANT=client-18384728-acme
 - 書き込み先テナントが現在の作業対象と一致しているか
 - 読み取り可能テナントに不要な顧客テナントが入っていないか
 - GitHub Actions の `tenant` input が正しいか
-

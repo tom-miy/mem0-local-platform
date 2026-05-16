@@ -31,3 +31,24 @@ Run all local checks:
 ```bash
 mise run check
 ```
+
+Remove local validation artifacts except `data/`:
+
+```bash
+mise run clean
+```
+
+`clean` removes `.cache` and Python `__pycache__` directories. It does not
+remove `data/`.
+
+Remove compose or integration-test data:
+
+```bash
+mise run clean-data
+```
+
+Remove all local generated state, including `.venv` and `data/`:
+
+```bash
+mise run clean-all
+```

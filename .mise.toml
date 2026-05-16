@@ -36,6 +36,11 @@ uv run python -m scripts.ingest_repo \
   --json
 """
 
+[tasks.remember-help]
+description = "Show ad-hoc memory CLI help for local tools."
+depends = ["setup"]
+run = "uv run remember-to-mem0 --help"
+
 [tasks.workflow-check]
 description = "Parse GitHub workflow YAML files."
 depends = ["setup"]
@@ -44,6 +49,28 @@ run = "uv run python -c \"import yaml; yaml.safe_load(open('.github/workflows/re
 [tasks.check]
 description = "Run local validation checks."
 depends = ["compile", "test", "workflow-check", "ingest-dry-run"]
+
+[tasks.clean]
+description = "Remove local test and validation artifacts except data/."
+run = """
+rm -rf .cache
+find scripts mem0_local_platform_api mem0_local_platform_mcp mcp tests \
+  -name __pycache__ -type d -prune -exec rm -rf {} +
+"""
+
+[tasks.clean-data]
+description = "Remove local runtime data created by compose or integration tests."
+run = "rm -rf data"
+
+[tasks.clean-all]
+description = "Remove validation artifacts, runtime data, and the Python virtual environment."
+depends = ["clean", "clean-data"]
+run = "rm -rf .venv"
+
+[tasks.distclean]
+description = "Remove local test artifacts and the Python virtual environment. Keeps data/."
+depends = ["clean"]
+run = "rm -rf .venv"
 
 [tasks.compose-config]
 description = "Render Docker Compose config. Requires Docker Compose v2."
