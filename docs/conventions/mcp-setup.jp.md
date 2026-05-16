@@ -59,7 +59,7 @@ CLOUDFLARE_ACCESS_CLIENT_SECRET=...
 
 ```yaml
 read:
-  - mimr-tech
+  - secret-knowledge
 ```
 
 `mem0.env` は `.env` とは用途が違います。
@@ -247,7 +247,7 @@ CLOUDFLARE_ACCESS_CLIENT_SECRET=...
 
 ```yaml
 read:
-  - mimr-tech
+  - secret-knowledge
 ```
 
 顧客作業:

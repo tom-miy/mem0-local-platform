@@ -78,3 +78,21 @@ Markdown is split by headings. Heading hierarchy is stored as metadata so a
 retrieved chunk can be traced back to its document context.
 Code, API definitions, and config files are also indexed as repository context,
 with path, document type, and repository metadata preserved.
+
+`type` is inferred by the Python ingestion code from `path` at registration
+time. Current values are:
+
+```text
+readme
+adr
+doc
+code
+config
+markdown
+```
+
+`type` is a broad file category. Usage-level labels such as local tool Go code
+versus main app Go code are both stored as `type=code`; retrieval should
+interpret `repo` and `path` when it needs that distinction. Paths such as
+`tools/**`, `scripts/**`, and `cmd/**` can mean different things per repository,
+so they are not stored as fixed mem0 metadata.

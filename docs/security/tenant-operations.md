@@ -15,14 +15,18 @@ Tenants are not repository categories. Repository names are stored as metadata.
 ## Recommended Tenants
 
 ```text
-mimr-tech
+secret-knowledge
 client-*
 ```
+
+`secret-knowledge` is an example boundary for your own judgment patterns and
+internal knowledge that do not need a customer-specific tenant. It does not mean
+that arbitrary secrets should be indexed there.
 
 Examples:
 
 ```text
-mimr-tech
+secret-knowledge
 client-upwork-18384728-acme
 client-acme
 ```
@@ -45,7 +49,7 @@ Store repository context as metadata:
 
 ```json
 {
-  "tenant": "mimr-tech",
+  "tenant": "secret-knowledge",
   "repo": "backend-testing-patterns",
   "path": "docs/e2e.md",
   "type": "doc",
@@ -53,7 +57,12 @@ Store repository context as metadata:
 }
 ```
 
-`tenant` is the isolation boundary. `repo` and `path` are retrieval metadata.
+`tenant` decides which knowledge boundary an agent may read. An agent allowed to
+read only `secret-knowledge` cannot search `client-acme`.
+
+`repo` and `path` are not access-control boundaries. They identify where a chunk
+came from, such as `backend-testing-patterns` and `docs/e2e.md`, so search
+results can be filtered or shown with source context.
 
 ## Read And Registration Policy
 
@@ -61,14 +70,14 @@ MCP only configures readable tenants:
 
 ```yaml
 read:
-  - mimr-tech
+  - secret-knowledge
 ```
 
 For client work:
 
 ```yaml
 read:
-  - mimr-tech
+  - secret-knowledge
   - client-18384728-acme
 ```
 

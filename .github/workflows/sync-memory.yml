@@ -20,7 +20,7 @@ jobs:
     uses: ./.github/workflows/reusable-sync.yml
     with:
       sync_mode: ${{ github.event.inputs.sync_mode || 'changed' }}
-      tenant: mimr-tech
+      tenant: secret-knowledge
       repo: mem0-local-platform
       platform_repository: ${{ github.repository }}
       platform_ref: ${{ github.ref_name }}

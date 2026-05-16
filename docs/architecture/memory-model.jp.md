@@ -24,7 +24,7 @@ repo:path:heading
 
 ```json
 {
-  "tenant": "mimr-tech",
+  "tenant": "secret-knowledge",
   "repo": "mem0-local-platform",
   "path": "docs/architecture/memory-model.md",
   "type": "doc",
@@ -32,7 +32,20 @@ repo:path:heading
 }
 ```
 
-`tenant` は分離境界に使います。`repo` と `path` は検索用メタデータです。
+`tenant` は、AI エージェントが読んでよい知識の範囲を決めるために使います。
+たとえば `secret-knowledge` だけを許可したエージェントは、`client-acme` の知識を
+検索できません。
+
+`repo` と `path` はアクセス制御ではありません。
+検索結果を「どのリポジトリの、どのファイルから来た文脈か」として絞り込んだり、
+表示したりするための情報です。
+
+`type` は取り込み CLI が `path` から自動判定するファイル大分類です。
+たとえば `docs/**` は `doc`、`adr/**` は `adr`、`.go` や `.py` は `code`、
+`.yaml` や `Dockerfile` は `config` になります。
+用途分類は `type` に入れません。
+ローカルツール用の Go とメイン app 用の Go はどちらも `code` として保存し、
+取得時に `repo` と `path` を見て解釈します。
 
 ## バックエンドの責務
 

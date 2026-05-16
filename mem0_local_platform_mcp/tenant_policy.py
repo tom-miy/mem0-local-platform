@@ -19,7 +19,7 @@ class TenantPolicy:
         if policy_file:
             return cls.from_file(Path(policy_file))
 
-        read_tenants = _csv(os.getenv("MEM0_READ_TENANTS", "mimr-tech"))
+        read_tenants = _csv(os.getenv("MEM0_READ_TENANTS", "secret-knowledge"))
         return cls(read_tenants=read_tenants)
 
     @classmethod

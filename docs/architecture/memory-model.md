@@ -24,7 +24,7 @@ Each chunk carries metadata like:
 
 ```json
 {
-  "tenant": "mimr-tech",
+  "tenant": "secret-knowledge",
   "repo": "mem0-local-platform",
   "path": "docs/architecture/memory-model.md",
   "type": "doc",
@@ -32,7 +32,19 @@ Each chunk carries metadata like:
 }
 ```
 
-`tenant` is used for isolation. `repo` and `path` are retrieval metadata.
+`tenant` decides which knowledge boundary an agent may read. For example, an
+agent allowed to read only `secret-knowledge` cannot search `client-acme`.
+
+`repo` and `path` are not access-control boundaries. They tell the retrieval
+layer which repository and file a chunk came from, so results can be filtered or
+shown with source context.
+
+`type` is a broad file category inferred by the ingestion CLI from `path`.
+For example, `docs/**` becomes `doc`, `adr/**` becomes `adr`, `.go` and `.py`
+become `code`, and `.yaml` or `Dockerfile` become `config`.
+Usage-level roles are not stored in `type`. Local tool Go code and main app Go
+code are both stored as `code`; retrieval should interpret `repo` and `path`
+when it needs that distinction.
 
 ## Backend Responsibilities
 

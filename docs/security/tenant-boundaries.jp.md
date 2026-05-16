@@ -7,7 +7,7 @@
 
 推奨するテナント例:
 
-- `mimr-tech`
+- `secret-knowledge`
 - `client-upwork-18384728-acme`
 - `client-acme`
 
@@ -15,7 +15,7 @@
 
 ```json
 {
-  "tenant": "mimr-tech",
+  "tenant": "secret-knowledge",
   "repo": "backend-testing-patterns",
   "path": "docs/e2e.md"
 }

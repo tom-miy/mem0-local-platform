@@ -16,6 +16,7 @@ from scripts.ingest_repo import (
     should_index,
 )
 from scripts.sync_path_rules import load_sync_config
+from scripts.sync_local_repo import unique_paths
 from mem0_local_platform_mcp.mem0_client import Mem0Client
 from mem0_local_platform_mcp.tenant_policy import TenantPolicy
 from mem0_local_platform_api.server import delete_memories
@@ -34,7 +35,7 @@ Subscribe to the channel
     def test_chunk_markdown_preserves_heading_metadata(self) -> None:
         chunks = chunk_markdown(
             "# Title\nIntro\n\n## Details\nBody",
-            tenant="mimr-tech",
+            tenant="secret-knowledge",
             repo="example",
             path="docs/example.md",
             tags=("mem0",),
@@ -42,7 +43,7 @@ Subscribe to the channel
 
         self.assertEqual(len(chunks), 2)
         self.assertEqual(chunks[1].metadata["heading"], "Title > Details")
-        self.assertEqual(chunks[1].metadata["tenant"], "mimr-tech")
+        self.assertEqual(chunks[1].metadata["tenant"], "secret-knowledge")
         self.assertEqual(chunks[1].metadata["repo"], "example")
         self.assertEqual(chunks[1].metadata["type"], "doc")
         self.assertEqual(chunks[1].metadata["tags"], ["mem0"])
@@ -60,7 +61,7 @@ Subscribe to the channel
     def test_duplicate_headings_get_distinct_stable_ids(self) -> None:
         chunks = chunk_markdown(
             "# Notes\nFirst\n\n# Notes\nSecond",
-            tenant="mimr-tech",
+            tenant="secret-knowledge",
             repo="example",
             path="docs/notes.md",
         )
@@ -156,6 +157,12 @@ Subscribe to the channel
             ],
         )
 
+    def test_unique_paths_preserves_order(self) -> None:
+        self.assertEqual(
+            unique_paths([Path("docs/a.md"), Path("docs/b.md"), Path("docs/a.md")]),
+            [Path("docs/a.md"), Path("docs/b.md")],
+        )
+
     def test_delete_path_memories_filters_by_tenant_repo_and_path(self) -> None:
         class FakeResponse:
             status_code = 200
@@ -183,7 +190,7 @@ Subscribe to the channel
         client.delete_existing(
             fake,
             filters={
-                "tenant": "mimr-tech",
+                "tenant": "secret-knowledge",
                 "repo": "repo",
                 "path": "docs/example.md",
             },
@@ -193,7 +200,7 @@ Subscribe to the channel
         self.assertEqual(
             json.loads(fake.params["filters"]),  # type: ignore[index]
             {
-                "tenant": "mimr-tech",
+                "tenant": "secret-knowledge",
                 "repo": "repo",
                 "path": "docs/example.md",
             },
@@ -216,15 +223,15 @@ Subscribe to the channel
         memory = FakeMemory()
 
         with patch("mem0_local_platform_api.server.get_memory", return_value=memory):
-            result = delete_memories(filters='{"tenant": "mimr-tech", "repo": "repo"}')
+            result = delete_memories(filters='{"tenant": "secret-knowledge", "repo": "repo"}')
 
         self.assertEqual(result["deleted_count"], 105)
         self.assertEqual(len(memory.deleted), 105)
 
     def test_tenant_policy_rejects_out_of_boundary_reads(self) -> None:
-        policy = TenantPolicy(read_tenants=("mimr-tech",))
+        policy = TenantPolicy(read_tenants=("secret-knowledge",))
 
-        self.assertEqual(policy.readable(["mimr-tech"]), ("mimr-tech",))
+        self.assertEqual(policy.readable(["secret-knowledge"]), ("secret-knowledge",))
         with self.assertRaises(ValueError):
             policy.readable(["client-secret"])
 
@@ -232,31 +239,31 @@ Subscribe to the channel
         with tempfile.TemporaryDirectory() as tmp:
             policy_path = Path(tmp) / "mem0.policy.yml"
             policy_path.write_text(
-                "read:\n  - mimr-tech\n  - client-tenant\n",
+                "read:\n  - secret-knowledge\n  - client-tenant\n",
                 encoding="utf-8",
             )
 
             policy = TenantPolicy.from_file(policy_path)
 
-        self.assertEqual(policy.read_tenants, ("mimr-tech", "client-tenant"))
+        self.assertEqual(policy.read_tenants, ("secret-knowledge", "client-tenant"))
 
     def test_tenant_policy_accepts_legacy_single_write_tenant(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             policy_path = Path(tmp) / "mem0.policy.yml"
             policy_path.write_text(
-                "read:\n  - mimr-tech\nwrite:\n  - client-tenant\n",
+                "read:\n  - secret-knowledge\nwrite:\n  - client-tenant\n",
                 encoding="utf-8",
             )
 
             policy = TenantPolicy.from_file(policy_path)
 
-        self.assertEqual(policy.read_tenants, ("mimr-tech",))
+        self.assertEqual(policy.read_tenants, ("secret-knowledge",))
 
     def test_tenant_policy_rejects_legacy_multiple_write_tenants(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             policy_path = Path(tmp) / "mem0.policy.yml"
             policy_path.write_text(
-                "read:\n  - mimr-tech\nwrite:\n  - mimr-tech\n  - client-tenant\n",
+                "read:\n  - secret-knowledge\nwrite:\n  - secret-knowledge\n  - client-tenant\n",
                 encoding="utf-8",
             )
 
@@ -267,7 +274,7 @@ Subscribe to the channel
         with tempfile.TemporaryDirectory() as tmp:
             policy_path = Path(tmp) / "mem0.policy.yml"
             policy_path.write_text(
-                "read:\n  - mimr-tech\n  - client-tenant\n",
+                "read:\n  - secret-knowledge\n  - client-tenant\n",
                 encoding="utf-8",
             )
 
@@ -275,27 +282,27 @@ Subscribe to the channel
                 "os.environ",
                 {
                     "MEM0_TENANT_POLICY_FILE": str(policy_path),
-                    "MEM0_READ_TENANTS": "mimr-tech",
-                    "MEM0_WRITE_TENANT": "mimr-tech",
+                    "MEM0_READ_TENANTS": "secret-knowledge",
+                    "MEM0_WRITE_TENANT": "secret-knowledge",
                 },
                 clear=True,
             ):
                 policy = TenantPolicy.from_env()
 
-        self.assertEqual(policy.read_tenants, ("mimr-tech", "client-tenant"))
+        self.assertEqual(policy.read_tenants, ("secret-knowledge", "client-tenant"))
 
     def test_tenant_policy_from_env_uses_read_tenants_only(self) -> None:
         with patch.dict(
             "os.environ",
             {
-                "MEM0_READ_TENANTS": "mimr-tech",
+                "MEM0_READ_TENANTS": "secret-knowledge",
                 "MEM0_WRITE_TENANT": "client-tenant",
             },
             clear=True,
         ):
             policy = TenantPolicy.from_env()
 
-        self.assertEqual(policy.read_tenants, ("mimr-tech",))
+        self.assertEqual(policy.read_tenants, ("secret-knowledge",))
 
     def test_build_request_headers_includes_cloudflare_access(self) -> None:
         headers = build_request_headers(

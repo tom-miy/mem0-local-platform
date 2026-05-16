@@ -17,7 +17,7 @@ Configure readable tenants in `mem0.policy.yml`:
 
 ```yaml
 read:
-  - mimr-tech
+  - secret-knowledge
 ```
 
 Register memory through GitHub Actions or the Python CLI. This avoids

@@ -52,7 +52,7 @@ Set readable tenants in `mem0.policy.yml`:
 
 ```yaml
 read:
-  - mimr-tech
+  - secret-knowledge
 ```
 
 Print a generic stdio MCP snippet:

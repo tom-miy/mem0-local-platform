@@ -7,7 +7,7 @@ sprawl and makes policy review harder.
 
 Recommended tenant examples:
 
-- `mimr-tech`
+- `secret-knowledge`
 - `client-upwork-18384728-acme`
 - `client-acme`
 
@@ -15,7 +15,7 @@ Repository filtering should use metadata:
 
 ```json
 {
-  "tenant": "mimr-tech",
+  "tenant": "secret-knowledge",
   "repo": "backend-testing-patterns",
   "path": "docs/e2e.md"
 }

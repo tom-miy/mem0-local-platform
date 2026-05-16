@@ -81,6 +81,10 @@ Use `--visibility private` for all private repositories in the organization, or
 For personal accounts, GitHub Actions secrets are repository-level; user-level
 `gh secret set --user` is for Codespaces, not Actions.
 
+If a client repository cannot connect to the mem0 API from GitHub Actions, do
+not use this workflow. Sync from a local clone instead. See "Local Repository
+Diff Sync" in [Local Tool Ingestion](local-tool-ingestion.md).
+
 ## Install
 
 Generate the caller workflow and path-rule file:
@@ -89,7 +93,7 @@ Generate the caller workflow and path-rule file:
 /path/to/mem0-local-platform/install.sh \
   --target github-actions \
   --target-dir /path/to/repository \
-  --tenant mimr-tech
+  --tenant secret-knowledge
 ```
 
 This creates:
@@ -128,7 +132,7 @@ jobs:
     uses: tom-miy/mem0-local-platform/.github/workflows/reusable-sync.yml@main
     with:
       sync_mode: ${{ github.event.inputs.sync_mode || 'changed' }}
-      tenant: mimr-tech
+      tenant: secret-knowledge
     secrets:
       MEM0_API_URL: ${{ secrets.MEM0_API_URL }}
       MEM0_API_KEY: ${{ secrets.MEM0_API_KEY }}

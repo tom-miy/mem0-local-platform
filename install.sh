@@ -18,11 +18,11 @@ Examples:
   ./install.sh --target claude-desktop --transport stdio
   ./install.sh --target generic --transport sse
   ./install.sh --target raycast
-  ./install.sh --target github-actions --target-dir /path/to/repo --tenant mimr-tech
+  ./install.sh --target github-actions --target-dir /path/to/repo --tenant secret-knowledge
 
 GitHub Actions options:
   --target-dir PATH             repository to install into (default: current directory)
-  --tenant NAME                 tenant written by the sync workflow (default: mimr-tech)
+  --tenant NAME                 tenant written by the sync workflow (default: secret-knowledge)
   --platform-repository OWNER/REPO
                                 reusable workflow repository (default: tom-miy/mem0-local-platform)
   --platform-ref REF            reusable workflow ref (default: main)
@@ -33,7 +33,7 @@ USAGE
 target="generic"
 transport="stdio"
 target_dir="."
-tenant="mimr-tech"
+tenant="secret-knowledge"
 platform_repository="tom-miy/mem0-local-platform"
 platform_ref="main"
 force="false"
@@ -270,7 +270,7 @@ pbpaste | \
   CLOUDFLARE_ACCESS_CLIENT_ID="${CLOUDFLARE_ACCESS_CLIENT_ID}" \
   CLOUDFLARE_ACCESS_CLIENT_SECRET="${CLOUDFLARE_ACCESS_CLIENT_SECRET}" \
   uv run remember-to-mem0 \
-    --tenant mimr-tech \
+    --tenant secret-knowledge \
     --source raycast \
     --type note \
     --tag clipboard

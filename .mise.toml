@@ -41,6 +41,30 @@ description = "Show ad-hoc memory CLI help for local tools."
 depends = ["setup"]
 run = "uv run remember-to-mem0 --help"
 
+[tasks.sync-local-repo-dry-run]
+description = "Dry-run local Git repository sync without GitHub Actions."
+depends = ["setup"]
+run = """
+uv run sync-local-repo-to-mem0 \
+  --root "${MEM0_REPO_ROOT:-.}" \
+  --tenant "${MEM0_DEFAULT_TENANT:-secret-knowledge}" \
+  --sync-mode "${MEM0_SYNC_MODE:-changed}" \
+  --since-ref "${MEM0_SINCE_REF:-HEAD}" \
+  --dry-run \
+  --json
+"""
+
+[tasks.sync-local-repo]
+description = "Sync a local Git repository into mem0 without GitHub Actions."
+depends = ["setup"]
+run = """
+uv run sync-local-repo-to-mem0 \
+  --root "${MEM0_REPO_ROOT:-.}" \
+  --tenant "${MEM0_DEFAULT_TENANT:-secret-knowledge}" \
+  --sync-mode "${MEM0_SYNC_MODE:-changed}" \
+  --since-ref "${MEM0_SINCE_REF:-HEAD}"
+"""
+
 [tasks.workflow-check]
 description = "Parse GitHub workflow YAML files."
 depends = ["setup"]

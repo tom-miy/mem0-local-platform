@@ -13,6 +13,7 @@ Docker runtime instead of being sent to an external AI SaaS.
 It can:
 
 - sync README, docs, ADRs, source code, API definitions, and config files from GitHub pushes
+- sync repositories from a local clone when GitHub Actions cannot reach mem0
 - remember local Markdown, Obsidian notes, and Raycast notes through a Python CLI
 - store context in a FalkorDB graph and a Qdrant vector search index
 - expose the indexed context to Codex, Claude, and local agents through MCP
@@ -40,7 +41,7 @@ Register a short working note immediately:
 
 ```bash
 uv run remember-to-mem0 \
-  --tenant mimr-tech \
+  --tenant secret-knowledge \
   --source obsidian \
   --type note \
   --tag debugging \
@@ -57,11 +58,11 @@ Separate customer-specific knowledge:
 
 ```yaml
 read:
-  - mimr-tech
+  - secret-knowledge
   - client-acme
 ```
 
-With this policy, the agent can read both `mimr-tech` and `client-acme`. Register
+With this policy, the agent can read both `secret-knowledge` and `client-acme`. Register
 new customer-specific memory with the GitHub Actions `tenant` input or
 `--tenant client-acme` in the Python CLI.
 
@@ -95,26 +96,27 @@ Tenant is a security boundary. It is not a repository name.
 
 Use tenants for isolation scopes such as:
 
-- `mimr-tech`
+- `secret-knowledge`
 - `client-*`
 
 Repository name is metadata:
 
 ```json
 {
-  "tenant": "mimr-tech",
+  "tenant": "secret-knowledge",
   "repo": "backend-testing-patterns",
   "path": "docs/e2e.md"
 }
 ```
 
-`mimr-tech` is an example tenant for internal knowledge in this repository.
-Replace it with the tenant name that represents your company, studio, team, or
-solo business knowledge. Use that tenant for public repositories, publishable
-skills, private judgment patterns, templates, research tools, and sales or deal
-notes. Use `client-*` only when a customer or contract needs its own isolation
-boundary. Public/private status, topic, and repository type should be metadata,
-not tenants.
+`secret-knowledge` is an example tenant for your own judgment patterns and
+internal knowledge that do not need a customer-specific tenant. It does not mean
+that arbitrary secrets should be stored there. Replace it with the tenant name
+that represents your company, studio, team, or solo business boundary if needed.
+Use that tenant for public repositories, publishable skills, private judgment
+patterns, templates, research tools, and sales or deal notes. Use `client-*`
+only when a customer or contract needs its own isolation boundary. Public/private
+status, topic, and repository type should be metadata, not tenants.
 
 ## GitHub Sync Strategy
 
@@ -151,7 +153,7 @@ jobs:
     uses: tom-miy/mem0-local-platform/.github/workflows/reusable-sync.yml@main
     with:
       sync_mode: ${{ github.event.inputs.sync_mode || 'changed' }}
-      tenant: mimr-tech
+      tenant: secret-knowledge
     secrets:
       MEM0_API_URL: ${{ secrets.MEM0_API_URL }}
       MEM0_API_KEY: ${{ secrets.MEM0_API_KEY }}
@@ -165,7 +167,7 @@ You can generate that workflow and path-rule files in a target repository:
 ./install.sh \
   --target github-actions \
   --target-dir /path/to/repository \
-  --tenant mimr-tech
+  --tenant secret-knowledge
 ```
 
 Set the target repository secrets with GitHub CLI:
@@ -224,6 +226,16 @@ To run a full sync manually, open the target repository in GitHub, go to
 
 For short notes from Obsidian, Raycast, or local Markdown files, use
 [Local Tool Ingestion](docs/conventions/local-tool-ingestion.md).
+
+For client repositories where GitHub Actions cannot reach mem0, sync from a
+local clone:
+
+```bash
+MEM0_REPO_ROOT=/path/to/client-repository \
+MEM0_DEFAULT_TENANT=client-acme \
+MEM0_SINCE_REF=origin/main \
+mise run sync-local-repo
+```
 
 Indexed paths:
 
@@ -293,7 +305,7 @@ Readable tenants are configured in `mem0.policy.yml`:
 
 ```yaml
 read:
-  - mimr-tech
+  - secret-knowledge
 ```
 
 Search tools only read from configured readable tenants, even when a caller

@@ -4,7 +4,8 @@ This guide is for sending short notes to mem0 from Obsidian, Raycast, Alfred,
 shell scripts, or similar local tools.
 
 This path is separate from GitHub Actions repository sync. Use the reusable
-workflow for repository code, API definitions, config, and Markdown. Use
+workflow for normal repository sync. When a client repository cannot connect to
+mem0 from GitHub Actions, sync a local clone with changed or full mode. Use
 `remember-to-mem0` for a short working note, research note, or decision that has
 not yet been written back to Git.
 
@@ -40,6 +41,60 @@ CLOUDFLARE_ACCESS_CLIENT_SECRET=...
 Do not use `CLOUDFLARE_TUNNEL_TOKEN` from local tools. That token is only for the
 runtime `cloudflared` service.
 
+## Local Repository Diff Sync
+
+For repositories that cannot use GitHub Actions, sync from a local clone. The
+command uses `.mem0-sync.yml` from the target repository when it exists, and
+falls back to `.mem0-sync.default.yml` from mem0-local-platform.
+
+Dry-run working tree and staged changes:
+
+```bash
+MEM0_REPO_ROOT=/path/to/client-repository \
+MEM0_DEFAULT_TENANT=client-acme \
+mise run sync-local-repo-dry-run
+```
+
+Register those changes:
+
+```bash
+MEM0_REPO_ROOT=/path/to/client-repository \
+MEM0_DEFAULT_TENANT=client-acme \
+mise run sync-local-repo
+```
+
+Sync the whole branch diff from `origin/main`:
+
+```bash
+MEM0_REPO_ROOT=/path/to/client-repository \
+MEM0_DEFAULT_TENANT=client-acme \
+MEM0_SINCE_REF=origin/main \
+mise run sync-local-repo
+```
+
+Use full sync for first indexing or rebuilds:
+
+```bash
+MEM0_REPO_ROOT=/path/to/client-repository \
+MEM0_DEFAULT_TENANT=client-acme \
+MEM0_SYNC_MODE=full \
+mise run sync-local-repo
+```
+
+To include untracked files, call the CLI directly:
+
+```bash
+uv run sync-local-repo-to-mem0 \
+  --root /path/to/client-repository \
+  --tenant client-acme \
+  --since-ref origin/main \
+  --include-untracked
+```
+
+This path also deletes existing chunks for the same `tenant + repo + path`
+before re-indexing. Deleted files and renamed source paths remove stale chunks
+from mem0 when they appear in the local diff.
+
 ## Direct Use
 
 Pass text directly:
@@ -49,7 +104,7 @@ MEM0_API_URL=https://mem0-api.example.com \
 CLOUDFLARE_ACCESS_CLIENT_ID=... \
 CLOUDFLARE_ACCESS_CLIENT_SECRET=... \
 uv run remember-to-mem0 \
-  --tenant mimr-tech \
+  --tenant secret-knowledge \
   --source raycast \
   --type note \
   --tag idea \
@@ -60,7 +115,7 @@ Read from standard input:
 
 ```bash
 pbpaste | uv run remember-to-mem0 \
-  --tenant mimr-tech \
+  --tenant secret-knowledge \
   --source raycast \
   --type note \
   --tag clipboard
@@ -70,7 +125,7 @@ Read from a file:
 
 ```bash
 uv run remember-to-mem0 \
-  --tenant mimr-tech \
+  --tenant secret-knowledge \
   --source local-file \
   --type note \
   --file /path/to/note.md
@@ -81,7 +136,7 @@ You can also call the Python module directly. It behaves the same as the
 
 ```bash
 uv run python -m scripts.remember_text \
-  --tenant mimr-tech \
+  --tenant secret-knowledge \
   --source local-file \
   --type note \
   --file /path/to/note.md
@@ -93,7 +148,7 @@ To register an Obsidian vault note, pass the note file path to `--file`:
 
 ```bash
 uv run remember-to-mem0 \
-  --tenant mimr-tech \
+  --tenant secret-knowledge \
   --source obsidian \
   --type note \
   --path "obsidian/ai-workflows/e2e-debugging.md" \
@@ -141,7 +196,7 @@ pbpaste | \
   CLOUDFLARE_ACCESS_CLIENT_ID="$CLOUDFLARE_ACCESS_CLIENT_ID" \
   CLOUDFLARE_ACCESS_CLIENT_SECRET="$CLOUDFLARE_ACCESS_CLIENT_SECRET" \
   uv run remember-to-mem0 \
-    --tenant mimr-tech \
+    --tenant secret-knowledge \
     --source raycast \
     --type note \
     --tag clipboard
