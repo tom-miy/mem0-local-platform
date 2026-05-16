@@ -42,22 +42,24 @@ Tenant is a security boundary. It is not a repository name.
 
 Use tenants for isolation scopes such as:
 
-- `vault`
-- `work`
+- `mimr-tech`
 - `client-*`
-- `agency-*`
 
 Repository name is metadata:
 
 ```json
 {
-  "tenant": "work",
+  "tenant": "mimr-tech",
   "repo": "backend-testing-patterns",
   "path": "docs/e2e.md"
 }
 ```
 
-This avoids tenant explosion while preserving repository-level filtering.
+Use `mimr-tech` for knowledge controlled by mimr-tech: public portfolio
+repositories, publishable skills, private judgment patterns, templates,
+research tools, and Upwork-related notes. Use `client-*` only when a customer
+or contract needs its own isolation boundary. Public/private status, topic, and
+repository type should be metadata, not tenants.
 
 ## GitHub Sync Strategy
 
@@ -94,7 +96,7 @@ jobs:
     uses: tom-miy/mem0-local-platform/.github/workflows/reusable-sync.yml@main
     with:
       sync_mode: ${{ github.event.inputs.sync_mode || 'changed' }}
-      tenant: work
+      tenant: mimr-tech
       include_paths: |
         README.md
         README*.md
@@ -182,10 +184,9 @@ Read and write boundaries are separated:
 
 ```yaml
 read:
-  - vault
-  - work
+  - mimr-tech
 write:
-  - work
+  - mimr-tech
 ```
 
 `remember` always writes to the configured write tenant. Search tools only read

@@ -51,22 +51,25 @@ Git repository
 
 推奨テナント:
 
-- `vault`
-- `work`
+- `mimr-tech`
 - `client-*`
-- `agency-*`
 
 メタデータ例:
 
 ```json
 {
-  "tenant": "work",
+  "tenant": "mimr-tech",
   "repo": "backend-testing-patterns",
   "path": "docs/e2e.md"
 }
 ```
 
 リポジトリごとにテナントを作ると、テナントが増えすぎて運用と監査が難しくなります。
+`mimr-tech` は mimr-tech が管理する知識全体の境界です。
+国内ポートフォリオ用リポジトリ、公開可能な skill、非公開の判断パターン、
+DevEx テンプレート、調査ツール、Upwork 関連メモもここに入れます。
+公開可否、用途、リポジトリ種別はテナントではなくメタデータで扱います。
+顧客や契約上の隔離が必要な場合だけ `client-*` を使います。
 詳細は [テナント運用ルール](docs/security/tenant-operations.jp.md) を見てください。
 
 ## 別リポジトリへの追加
@@ -98,7 +101,7 @@ jobs:
     uses: tom-miy/mem0-local-platform/.github/workflows/reusable-sync.yml@main
     with:
       sync_mode: ${{ github.event.inputs.sync_mode || 'changed' }}
-      tenant: work
+      tenant: mimr-tech
     secrets:
       MEM0_API_URL: ${{ secrets.MEM0_API_URL }}
       MEM0_API_KEY: ${{ secrets.MEM0_API_KEY }}
@@ -190,11 +193,10 @@ FastMCP サーバーは次のツールを提供します。
 
 ```yaml
 read:
-  - vault
-  - work
+  - mimr-tech
 
 write:
-  - work
+  - mimr-tech
 ```
 
 `remember` は設定された書き込み先テナントにだけ書き込みます。
@@ -355,28 +357,27 @@ data/mem0/
 
 ```json
 {
-  "tenant": "work",
+  "tenant": "mimr-tech",
   "repo": "backend-testing-patterns",
   "path": "docs/e2e.md"
 }
 ```
 
-この場合、`work` が読み取りや書き込みの境界です。
+この場合、`mimr-tech` が読み取りや書き込みの境界です。
 `backend-testing-patterns` は検索で絞り込むための情報であり、境界ではありません。
 
-個人作業の例:
+mimr-tech 管理下の作業例:
 
 ```yaml
 read:
-  - vault
-  - work
+  - mimr-tech
 
 write:
-  - work
+  - mimr-tech
 ```
 
-この設定では、エージェントは `vault` と `work` を検索できます。
-新しく記録する内容は `work` にだけ入ります。
+この設定では、エージェントは `mimr-tech` だけを検索できます。
+新しく記録する内容も `mimr-tech` に入ります。
 
 顧客作業の例:
 
@@ -389,7 +390,7 @@ write:
 ```
 
 この設定では、エージェントはその顧客用テナントだけを読み書きします。
-別の顧客や通常作業用の `work` には触れません。
+別の顧客や `mimr-tech` には触れません。
 
 GitHub Actions から同期する例:
 

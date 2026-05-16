@@ -46,7 +46,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--text", help="text to remember")
     parser.add_argument("--file", help="file to remember; stdin is used when omitted")
-    parser.add_argument("--tenant", default=os.getenv("MEM0_DEFAULT_TENANT", "work"))
+    parser.add_argument("--tenant", default=os.getenv("MEM0_DEFAULT_TENANT", "mimr-tech"))
     parser.add_argument("--source", default="local-tool")
     parser.add_argument("--type", default="note")
     parser.add_argument("--repo", default="")

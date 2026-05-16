@@ -120,7 +120,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", default=".", help="repository root to inspect")
     parser.add_argument("--repo", help="repository metadata name; defaults to git directory name")
-    parser.add_argument("--tenant", default=os.getenv("MEM0_DEFAULT_TENANT", "work"))
+    parser.add_argument("--tenant", default=os.getenv("MEM0_DEFAULT_TENANT", "mimr-tech"))
     parser.add_argument("--tag", action="append", default=[])
     parser.add_argument("--changed-files", nargs="*", help="explicit changed file list")
     parser.add_argument("--changed-files-file", help="newline-delimited changed file list")

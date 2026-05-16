@@ -7,16 +7,15 @@ sprawl and makes policy review harder.
 
 Recommended tenant examples:
 
-- `vault`
-- `work`
-- `upwork-18384728-acme`
-- `agency-991-example`
+- `mimr-tech`
+- `client-upwork-18384728-acme`
+- `client-acme`
 
 Repository filtering should use metadata:
 
 ```json
 {
-  "tenant": "work",
+  "tenant": "mimr-tech",
   "repo": "backend-testing-patterns",
   "path": "docs/e2e.md"
 }
@@ -24,4 +23,3 @@ Repository filtering should use metadata:
 
 The MCP server must reject requested read tenants that are outside the configured
 read boundary.
-

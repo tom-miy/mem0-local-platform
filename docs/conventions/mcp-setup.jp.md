@@ -58,11 +58,10 @@ CLOUDFLARE_ACCESS_CLIENT_SECRET=...
 
 ```yaml
 read:
-  - vault
-  - work
+  - mimr-tech
 
 write:
-  - work
+  - mimr-tech
 ```
 
 `mem0.env` は `.env` とは用途が違います。
@@ -223,15 +222,14 @@ CLOUDFLARE_ACCESS_CLIENT_SECRET=...
 
 読み取り可能テナントと書き込み先テナントは用途に合わせて変えます。
 
-個人作業:
+mimr-tech 管理下の作業:
 
 ```yaml
 read:
-  - vault
-  - work
+  - mimr-tech
 
 write:
-  - work
+  - mimr-tech
 ```
 
 顧客作業:

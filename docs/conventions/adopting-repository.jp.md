@@ -55,7 +55,7 @@ jobs:
     uses: tom-miy/mem0-local-platform/.github/workflows/reusable-sync.yml@main
     with:
       sync_mode: ${{ github.event.inputs.sync_mode || 'changed' }}
-      tenant: work
+      tenant: mimr-tech
     secrets:
       MEM0_API_URL: ${{ secrets.MEM0_API_URL }}
       MEM0_API_KEY: ${{ secrets.MEM0_API_KEY }}
@@ -161,7 +161,7 @@ jobs:
     uses: tom-miy/mem0-local-platform/.github/workflows/reusable-sync.yml@main
     with:
       sync_mode: ${{ github.event.inputs.sync_mode || 'changed' }}
-      tenant: work
+      tenant: mimr-tech
       include_paths: |
         README.md
         handbook/*.md
@@ -185,7 +185,7 @@ exclude は include より先に評価されます。
 
 ```yaml
 with:
-  tenant: work
+  tenant: mimr-tech
   repo: backend-testing-patterns
 ```
 

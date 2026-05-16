@@ -20,8 +20,8 @@ class TenantPolicy:
         if policy_file:
             return cls.from_file(Path(policy_file))
 
-        read_tenants = _csv(os.getenv("MEM0_READ_TENANTS", "work"))
-        write_tenant = os.getenv("MEM0_WRITE_TENANT", "work").strip()
+        read_tenants = _csv(os.getenv("MEM0_READ_TENANTS", "mimr-tech"))
+        write_tenant = os.getenv("MEM0_WRITE_TENANT", "mimr-tech").strip()
         if not write_tenant:
             raise ValueError("MEM0_WRITE_TENANT must not be empty")
         if write_tenant not in read_tenants:

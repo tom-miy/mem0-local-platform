@@ -50,7 +50,7 @@ MEM0_API_URL=https://mem0-api.example.com \
 CLOUDFLARE_ACCESS_CLIENT_ID=... \
 CLOUDFLARE_ACCESS_CLIENT_SECRET=... \
 uv run remember-to-mem0 \
-  --tenant work \
+  --tenant mimr-tech \
   --source raycast \
   --type note \
   --tag idea \
@@ -61,7 +61,7 @@ uv run remember-to-mem0 \
 
 ```bash
 pbpaste | uv run remember-to-mem0 \
-  --tenant work \
+  --tenant mimr-tech \
   --source raycast \
   --type note \
   --tag clipboard
@@ -71,7 +71,7 @@ pbpaste | uv run remember-to-mem0 \
 
 ```bash
 uv run remember-to-mem0 \
-  --tenant work \
+  --tenant mimr-tech \
   --source local-file \
   --type note \
   --file /path/to/note.md
@@ -105,7 +105,7 @@ pbpaste | \
   CLOUDFLARE_ACCESS_CLIENT_ID="$CLOUDFLARE_ACCESS_CLIENT_ID" \
   CLOUDFLARE_ACCESS_CLIENT_SECRET="$CLOUDFLARE_ACCESS_CLIENT_SECRET" \
   uv run remember-to-mem0 \
-    --tenant work \
+    --tenant mimr-tech \
     --source raycast \
     --type note \
     --tag clipboard
@@ -126,7 +126,7 @@ CLOUDFLARE_ACCESS_CLIENT_SECRET
 
 ```json
 {
-  "tenant": "work",
+  "tenant": "mimr-tech",
   "source": "raycast",
   "type": "note",
   "tags": ["clipboard"]
@@ -137,7 +137,7 @@ CLOUDFLARE_ACCESS_CLIENT_SECRET
 
 ```bash
 uv run remember-to-mem0 \
-  --tenant work \
+  --tenant mimr-tech \
   --source raycast \
   --type decision \
   --repo backend-testing-patterns \

@@ -24,7 +24,7 @@ Subscribe to the channel
     def test_chunk_markdown_preserves_heading_metadata(self) -> None:
         chunks = chunk_markdown(
             "# Title\nIntro\n\n## Details\nBody",
-            tenant="work",
+            tenant="mimr-tech",
             repo="example",
             path="docs/example.md",
             tags=("mem0",),
@@ -32,7 +32,7 @@ Subscribe to the channel
 
         self.assertEqual(len(chunks), 2)
         self.assertEqual(chunks[1].metadata["heading"], "Title > Details")
-        self.assertEqual(chunks[1].metadata["tenant"], "work")
+        self.assertEqual(chunks[1].metadata["tenant"], "mimr-tech")
         self.assertEqual(chunks[1].metadata["repo"], "example")
         self.assertEqual(chunks[1].metadata["type"], "doc")
         self.assertEqual(chunks[1].metadata["tags"], ["mem0"])
@@ -80,9 +80,9 @@ Subscribe to the channel
         self.assertIsNone(normalize_repo_path(Path("../README.md")))
 
     def test_tenant_policy_rejects_out_of_boundary_reads(self) -> None:
-        policy = TenantPolicy(read_tenants=("vault", "work"), write_tenant="work")
+        policy = TenantPolicy(read_tenants=("mimr-tech",), write_tenant="mimr-tech")
 
-        self.assertEqual(policy.readable(["work"]), ("work",))
+        self.assertEqual(policy.readable(["mimr-tech"]), ("mimr-tech",))
         with self.assertRaises(ValueError):
             policy.readable(["client-secret"])
 
@@ -90,19 +90,22 @@ Subscribe to the channel
         with tempfile.TemporaryDirectory() as tmp:
             policy_path = Path(tmp) / "mem0.policy.yml"
             policy_path.write_text(
-                "read:\n  - vault\n  - client-tenant\nwrite:\n  - client-tenant\n",
+                "read:\n  - mimr-tech\n  - client-tenant\nwrite:\n  - client-tenant\n",
                 encoding="utf-8",
             )
 
             policy = TenantPolicy.from_file(policy_path)
 
-        self.assertEqual(policy.read_tenants, ("vault", "client-tenant"))
+        self.assertEqual(policy.read_tenants, ("mimr-tech", "client-tenant"))
         self.assertEqual(policy.write_tenant, "client-tenant")
 
     def test_tenant_policy_rejects_multiple_write_tenants(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             policy_path = Path(tmp) / "mem0.policy.yml"
-            policy_path.write_text("read:\n  - work\nwrite:\n  - work\n  - vault\n", encoding="utf-8")
+            policy_path.write_text(
+                "read:\n  - mimr-tech\nwrite:\n  - mimr-tech\n  - client-tenant\n",
+                encoding="utf-8",
+            )
 
             with self.assertRaises(ValueError):
                 TenantPolicy.from_file(policy_path)
@@ -111,7 +114,7 @@ Subscribe to the channel
         with tempfile.TemporaryDirectory() as tmp:
             policy_path = Path(tmp) / "mem0.policy.yml"
             policy_path.write_text(
-                "read:\n  - vault\n  - client-tenant\nwrite:\n  - client-tenant\n",
+                "read:\n  - mimr-tech\n  - client-tenant\nwrite:\n  - client-tenant\n",
                 encoding="utf-8",
             )
 
@@ -119,29 +122,29 @@ Subscribe to the channel
                 "os.environ",
                 {
                     "MEM0_TENANT_POLICY_FILE": str(policy_path),
-                    "MEM0_READ_TENANTS": "work",
-                    "MEM0_WRITE_TENANT": "work",
+                    "MEM0_READ_TENANTS": "mimr-tech",
+                    "MEM0_WRITE_TENANT": "mimr-tech",
                 },
                 clear=True,
             ):
                 policy = TenantPolicy.from_env()
 
-        self.assertEqual(policy.read_tenants, ("vault", "client-tenant"))
+        self.assertEqual(policy.read_tenants, ("mimr-tech", "client-tenant"))
         self.assertEqual(policy.write_tenant, "client-tenant")
 
     def test_tenant_policy_from_env_fallback_adds_write_tenant_to_readable(self) -> None:
         with patch.dict(
             "os.environ",
             {
-                "MEM0_READ_TENANTS": "vault",
-                "MEM0_WRITE_TENANT": "work",
+                "MEM0_READ_TENANTS": "mimr-tech",
+                "MEM0_WRITE_TENANT": "client-tenant",
             },
             clear=True,
         ):
             policy = TenantPolicy.from_env()
 
-        self.assertEqual(policy.read_tenants, ("vault", "work"))
-        self.assertEqual(policy.write_tenant, "work")
+        self.assertEqual(policy.read_tenants, ("mimr-tech", "client-tenant"))
+        self.assertEqual(policy.write_tenant, "client-tenant")
 
     def test_build_request_headers_includes_cloudflare_access(self) -> None:
         headers = build_request_headers(

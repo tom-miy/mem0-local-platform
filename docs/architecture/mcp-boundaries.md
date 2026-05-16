@@ -18,11 +18,10 @@ Configure read tenants and the write tenant in `mem0.policy.yml`:
 
 ```yaml
 read:
-  - vault
-  - work
+  - mimr-tech
 
 write:
-  - work
+  - mimr-tech
 ```
 
 The write tenant is automatically included in readable tenants so newly written

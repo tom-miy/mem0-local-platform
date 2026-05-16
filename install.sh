@@ -140,7 +140,7 @@ pbpaste | \
   CLOUDFLARE_ACCESS_CLIENT_ID="${CLOUDFLARE_ACCESS_CLIENT_ID}" \
   CLOUDFLARE_ACCESS_CLIENT_SECRET="${CLOUDFLARE_ACCESS_CLIENT_SECRET}" \
   uv run remember-to-mem0 \
-    --tenant work \
+    --tenant mimr-tech \
     --source raycast \
     --type note \
     --tag clipboard

@@ -12,7 +12,7 @@ on:
         description: Tenant security boundary to write into.
         required: false
         type: string
-        default: work
+        default: mimr-tech
       repo:
         description: Repository metadata name. Defaults to owner/repo basename.
         required: false
@@ -143,7 +143,7 @@ jobs:
           MEM0_API_KEY: ${{ secrets.MEM0_API_KEY }}
           CLOUDFLARE_ACCESS_CLIENT_ID: ${{ secrets.CLOUDFLARE_ACCESS_CLIENT_ID }}
           CLOUDFLARE_ACCESS_CLIENT_SECRET: ${{ secrets.CLOUDFLARE_ACCESS_CLIENT_SECRET }}
-          TENANT: ${{ inputs.tenant || 'work' }}
+          TENANT: ${{ inputs.tenant || 'mimr-tech' }}
           REPO_NAME: ${{ inputs.repo || github.event.repository.name }}
         shell: bash
         run: |

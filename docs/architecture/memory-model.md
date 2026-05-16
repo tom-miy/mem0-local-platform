@@ -24,7 +24,7 @@ Each chunk carries metadata like:
 
 ```json
 {
-  "tenant": "work",
+  "tenant": "mimr-tech",
   "repo": "mem0-local-platform",
   "path": "docs/architecture/memory-model.md",
   "type": "doc",

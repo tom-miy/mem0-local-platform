@@ -1,7 +1,5 @@
 read:
-  - vault
-  - work
+  - mimr-tech
 
 write:
-  - work
-
+  - mimr-tech
