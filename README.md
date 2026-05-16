@@ -2,6 +2,8 @@
 
 Developer Knowledge Infrastructure for local-first AI-assisted engineering.
 
+Japanese documentation: [README.jp.md](README.jp.md)
+
 This repository runs a self-hosted mem0 layer backed by FalkorDB and Qdrant,
 exposes tenant-aware memory tools over MCP, and provides one reusable GitHub
 Actions workflow for keeping repository knowledge in sync.
@@ -87,12 +89,13 @@ on:
 
 jobs:
   sync:
-    uses: mimr-tech/mem0-local-platform/.github/workflows/reusable-sync.yml@main
+    uses: tom-miy/mem0-local-platform/.github/workflows/reusable-sync.yml@main
     with:
       sync_mode: ${{ github.event.inputs.sync_mode || 'changed' }}
       tenant: work
       include_paths: |
         README.md
+        README*.md
         docs/*.md
         docs/**/*.md
         adr/*.md
@@ -107,6 +110,8 @@ jobs:
     secrets:
       MEM0_API_URL: ${{ secrets.MEM0_API_URL }}
       MEM0_API_KEY: ${{ secrets.MEM0_API_KEY }}
+      CLOUDFLARE_ACCESS_CLIENT_ID: ${{ secrets.CLOUDFLARE_ACCESS_CLIENT_ID }}
+      CLOUDFLARE_ACCESS_CLIENT_SECRET: ${{ secrets.CLOUDFLARE_ACCESS_CLIENT_SECRET }}
 ```
 
 The reusable workflow checks out the source repository, checks out this platform
@@ -114,6 +119,10 @@ repository for the ingestion CLI, sets up `uv`, and builds the file list from
 `sync_mode`.
 For repository sync from GitHub Actions, `MEM0_API_URL` should be the
 Cloudflare-protected mem0 API hostname, not the internal compose URL.
+GitHub Actions authenticates to Cloudflare Access with
+`CLOUDFLARE_ACCESS_CLIENT_ID` and `CLOUDFLARE_ACCESS_CLIENT_SECRET`.
+`CLOUDFLARE_TUNNEL_TOKEN` is only used by the platform runtime's
+`cloudflared` service.
 
 `sync_mode` controls the file list:
 
@@ -126,6 +135,7 @@ changes, or recovery after rebuilding mem0 state.
 Indexed paths:
 
 - `README.md`
+- `README*.md`
 - `docs/**/*.md`
 - `adr/**/*.md`
 - `adrs/**/*.md`

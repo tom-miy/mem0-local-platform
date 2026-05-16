@@ -3,7 +3,7 @@ import unittest
 
 from scripts.chunk_markdown import chunk_markdown, stable_chunk_id
 from scripts.cleanup_text import cleanup_text
-from scripts.ingest_repo import load_patterns, normalize_repo_path, should_index
+from scripts.ingest_repo import build_request_headers, load_patterns, normalize_repo_path, should_index
 from mem0_local_platform_mcp.tenant_policy import TenantPolicy
 
 
@@ -45,6 +45,7 @@ Subscribe to the channel
 
     def test_should_index_markdown_first_paths(self) -> None:
         self.assertTrue(should_index(Path("README.md")))
+        self.assertTrue(should_index(Path("README.jp.md")))
         self.assertTrue(should_index(Path("docs/e2e.md")))
         self.assertTrue(should_index(Path("docs/nested/e2e.md")))
         self.assertTrue(should_index(Path("adr/0001-record.md")))
@@ -80,6 +81,24 @@ Subscribe to the channel
         self.assertEqual(policy.readable(["work"]), ("work",))
         with self.assertRaises(ValueError):
             policy.readable(["client-secret"])
+
+    def test_build_request_headers_includes_cloudflare_access(self) -> None:
+        headers = build_request_headers(
+            api_key="",
+            cloudflare_access_client_id="client-id",
+            cloudflare_access_client_secret="client-secret",
+        )
+
+        self.assertEqual(headers["CF-Access-Client-Id"], "client-id")
+        self.assertEqual(headers["CF-Access-Client-Secret"], "client-secret")
+
+    def test_build_request_headers_requires_complete_cloudflare_pair(self) -> None:
+        with self.assertRaises(ValueError):
+            build_request_headers(
+                api_key="",
+                cloudflare_access_client_id="client-id",
+                cloudflare_access_client_secret="",
+            )
 
 
 if __name__ == "__main__":

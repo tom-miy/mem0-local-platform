@@ -10,6 +10,7 @@ retrieval.
 The default ingestion rules index:
 
 - `README.md`
+- `README*.md`
 - `docs/**/*.md`
 - `adr/**/*.md`
 - `adrs/**/*.md`

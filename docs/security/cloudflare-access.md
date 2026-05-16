@@ -35,6 +35,10 @@ The MCP and ingestion clients should call the Cloudflare-protected hostnames
 from outside the compose network. Inside the compose network, services call
 `http://mem0:8000`.
 
+`CLOUDFLARE_TUNNEL_TOKEN` is only for the `cloudflared` service that maintains
+the tunnel. Clients such as GitHub Actions do not use the tunnel token. They use
+the Access service token headers above.
+
 ## Human Login
 
 Human OAuth login is optional. It can be enabled for debugging or manual

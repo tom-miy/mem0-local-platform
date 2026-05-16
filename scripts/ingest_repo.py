@@ -16,6 +16,7 @@ from scripts.chunk_markdown import MarkdownChunk, chunk_markdown
 
 DEFAULT_INCLUDE_PATTERNS = (
     "README.md",
+    "README*.md",
     "docs/*.md",
     "docs/**/*.md",
     "adr/*.md",
@@ -100,6 +101,8 @@ def main() -> int:
     client = Mem0HttpClient(
         api_url=args.mem0_url,
         api_key=args.mem0_api_key,
+        cloudflare_access_client_id=args.cloudflare_access_client_id,
+        cloudflare_access_client_secret=args.cloudflare_access_client_secret,
         agent_id=args.agent_id,
     )
     for chunk in chunks:
@@ -128,6 +131,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--exclude-from", help="newline-delimited exclude glob file")
     parser.add_argument("--mem0-url", default=os.getenv("MEM0_API_URL", "http://localhost:8000"))
     parser.add_argument("--mem0-api-key", default=os.getenv("MEM0_API_KEY", ""))
+    parser.add_argument(
+        "--cloudflare-access-client-id",
+        default=os.getenv("CLOUDFLARE_ACCESS_CLIENT_ID", ""),
+    )
+    parser.add_argument(
+        "--cloudflare-access-client-secret",
+        default=os.getenv("CLOUDFLARE_ACCESS_CLIENT_SECRET", ""),
+    )
     parser.add_argument("--agent-id", default=os.getenv("MEM0_AGENT_ID", "github-repo-indexer"))
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--json", action="store_true")
@@ -240,9 +251,21 @@ def chunk_to_payload(chunk: MarkdownChunk) -> dict[str, object]:
 
 
 class Mem0HttpClient:
-    def __init__(self, *, api_url: str, api_key: str, agent_id: str) -> None:
+    def __init__(
+        self,
+        *,
+        api_url: str,
+        api_key: str,
+        cloudflare_access_client_id: str,
+        cloudflare_access_client_secret: str,
+        agent_id: str,
+    ) -> None:
         self.api_url = api_url.rstrip("/")
-        self.headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+        self.headers = build_request_headers(
+            api_key=api_key,
+            cloudflare_access_client_id=cloudflare_access_client_id,
+            cloudflare_access_client_secret=cloudflare_access_client_secret,
+        )
         self.agent_id = agent_id
         self.add_path = os.getenv("MEM0_ADD_PATH", "/add")
         self.delete_path = os.getenv("MEM0_DELETE_PATH", "/v1/memories/")
@@ -276,6 +299,26 @@ class Mem0HttpClient:
         if response.status_code == 404:
             return
         response.raise_for_status()
+
+
+def build_request_headers(
+    *,
+    api_key: str,
+    cloudflare_access_client_id: str,
+    cloudflare_access_client_secret: str,
+) -> dict[str, str]:
+    headers: dict[str, str] = {}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    if cloudflare_access_client_id or cloudflare_access_client_secret:
+        if not cloudflare_access_client_id or not cloudflare_access_client_secret:
+            raise ValueError(
+                "both CLOUDFLARE_ACCESS_CLIENT_ID and "
+                "CLOUDFLARE_ACCESS_CLIENT_SECRET are required"
+            )
+        headers["CF-Access-Client-Id"] = cloudflare_access_client_id
+        headers["CF-Access-Client-Secret"] = cloudflare_access_client_secret
+    return headers
 
 
 if __name__ == "__main__":
