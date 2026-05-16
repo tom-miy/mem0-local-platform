@@ -106,4 +106,10 @@ def infer_document_type(path: str) -> str:
         return "readme"
     if lower.startswith("docs/") or "/docs/" in lower:
         return "doc"
+    if lower.endswith((".go", ".py", ".ts", ".tsx", ".js", ".jsx", ".rs", ".java", ".kt", ".sql", ".sh")):
+        return "code"
+    if lower.endswith((".yaml", ".yml", ".json", ".toml", ".ini", ".proto", ".graphql")):
+        return "config"
+    if lower.endswith("dockerfile") or lower.endswith("makefile"):
+        return "config"
     return "markdown"

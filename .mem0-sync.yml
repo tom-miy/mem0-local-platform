@@ -9,12 +9,52 @@ include:
   - adrs/**/*.md
   - mcp/tools/README.md
   - mcp/tools/README.jp.md
+  - api.yaml
+  - api.yml
+  - openapi.yaml
+  - openapi.yml
+  - "**/api.yaml"
+  - "**/api.yml"
+  - "**/openapi.yaml"
+  - "**/openapi.yml"
+  - "**/*.go"
+  - "**/*.py"
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.js"
+  - "**/*.jsx"
+  - "**/*.rs"
+  - "**/*.java"
+  - "**/*.kt"
+  - "**/*.sql"
+  - "**/*.sh"
+  - "**/*.yaml"
+  - "**/*.yml"
+  - "**/*.json"
+  - "**/*.toml"
+  - "**/*.ini"
+  - "**/*.proto"
+  - "**/*.graphql"
+  - Dockerfile
+  - "**/Dockerfile"
+  - compose.yml
+  - compose.yaml
+  - "**/compose.yml"
+  - "**/compose.yaml"
+  - Makefile
+  - "**/Makefile"
 
 exclude:
   - .git/**
   - .venv/**
   - .cache/**
   - data/**
+  - secrets/**
+  - "**/secrets/**"
+  - .env
+  - "**/.env"
+  - .env.local
+  - "**/.env.local"
   - node_modules/**
   - "**/node_modules/**"
   - dist/**

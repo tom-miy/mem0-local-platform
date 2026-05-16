@@ -67,14 +67,18 @@ Subscribe to the channel
         self.assertEqual(chunks[0].metadata["heading_occurrence"], 1)
         self.assertEqual(chunks[1].metadata["heading_occurrence"], 2)
 
-    def test_should_index_markdown_first_paths(self) -> None:
+    def test_should_index_repository_context_paths(self) -> None:
         self.assertTrue(should_index(Path("README.md")))
         self.assertTrue(should_index(Path("README.jp.md")))
         self.assertTrue(should_index(Path("docs/e2e.md")))
         self.assertTrue(should_index(Path("docs/nested/e2e.md")))
         self.assertTrue(should_index(Path("adr/0001-record.md")))
+        self.assertTrue(should_index(Path("cmd/server/main.go")))
+        self.assertTrue(should_index(Path("api/openapi.yaml")))
+        self.assertTrue(should_index(Path("compose.yml")))
         self.assertFalse(should_index(Path("node_modules/pkg/README.md")))
-        self.assertFalse(should_index(Path("src/main.py")))
+        self.assertFalse(should_index(Path("secrets/api.yaml")))
+        self.assertFalse(should_index(Path(".env")))
 
     def test_should_index_accepts_workflow_path_rules(self) -> None:
         self.assertTrue(

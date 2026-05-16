@@ -4,7 +4,7 @@
 mem0 に登録するためのものです。
 
 GitHub Actions の同期とは別経路です。
-リポジトリの Markdown を同期する場合は共通ワークフローを使います。
+リポジトリのコード、API 定義、設定、Markdown を同期する場合は共通ワークフローを使います。
 その場で思いついたメモ、調査メモ、作業中の決定を登録する場合は
 `remember-to-mem0` を使います。
 
@@ -17,15 +17,23 @@ GitHub Actions の同期とは別経路です。
 MEM0_API_URL=https://mem0-api.example.com
 ```
 
+自分の Tailscale ネットワーク内の端末から自宅サーバへ接続する場合は、Tailscale の
+デバイス名も使えます。
+
+```text
+MEM0_API_URL=https://home-server.tailnet-name.ts.net:8443
+```
+
 Compose 内のサービスから呼ぶ場合だけ、内部 URL を使います。
 
 ```text
 MEM0_API_URL=http://mem0:8000
 ```
 
-Raycast や通常のターミナルから使う場合は、Cloudflare Access の
-サービストークンも設定します。値は `mem0.env` に置くか、Raycast の
-環境変数として設定します。
+Raycast や通常のターミナルから Cloudflare Access 経由で使う場合は、
+Cloudflare Access のサービストークンも設定します。値は `mem0.env` に置くか、
+Raycast の環境変数として設定します。Tailscale 経由では Cloudflare Access の
+サービストークンは不要です。
 
 ```text
 CLOUDFLARE_ACCESS_CLIENT_ID=...
@@ -191,7 +199,7 @@ uv run remember-to-mem0 \
 
 GitHub Actions の共通ワークフロー:
 
-- README、docs、ADR を Git から同期する
+- コード、API 定義、設定、README、docs、ADR を Git から同期する
 - 初回投入や復旧時に `full` を使う
 - 通常 push で `changed` を使う
 

@@ -12,7 +12,7 @@ Docker runtime instead of being sent to an external AI SaaS.
 
 It can:
 
-- sync README, docs, and ADR files from GitHub pushes
+- sync README, docs, ADRs, source code, API definitions, and config files from GitHub pushes
 - remember local Markdown, Obsidian notes, and Raycast notes through a Python CLI
 - store context in a FalkorDB graph and a Qdrant vector search index
 - expose the indexed context to Codex, Claude, and local agents through MCP
@@ -20,20 +20,21 @@ It can:
 
 The benefit is that AI agents can reuse prior decisions, design notes, and
 research findings without asking for the same context again. Git repositories,
-Markdown, ADRs, and Obsidian notes remain the durable knowledge sources; mem0 is
-the rebuildable retrieval index built from them.
+source code, API definitions, config files, Markdown, ADRs, and Obsidian notes
+remain the durable knowledge sources; mem0 is the rebuildable retrieval index
+built from them.
 FalkorDB handles relationship-oriented memory, while Qdrant handles semantic
 similarity retrieval. If you configure an external LLM or embedding provider,
 review what text is sent to that provider.
 
 ## Usage Examples
 
-Keep design notes in a repository:
+Keep design and implementation context in a repository:
 
-1. Update `docs/e2e.md` or `adr/001-retry-policy.md`.
+1. Update `docs/e2e.md`, `adr/001-retry-policy.md`, `api/openapi.yaml`, or `cmd/server/main.go`.
 2. Push to GitHub.
-3. The reusable workflow syncs only changed Markdown into mem0.
-4. Codex or Claude can retrieve prior design decisions through MCP.
+3. The reusable workflow syncs only changed eligible files into mem0.
+4. Codex or Claude can retrieve prior design decisions, API contracts, and implementation details through MCP.
 
 Register a short working note immediately:
 
@@ -84,7 +85,7 @@ Git repository
 1. A repository changes through normal Git work.
 2. GitHub push triggers `.github/workflows/reusable-sync.yml`.
 3. The workflow selects changed files or all tracked files.
-4. `scripts/ingest_repo.py` indexes Markdown-first content.
+4. `scripts/ingest_repo.py` indexes repository context files.
 5. Chunks are upserted with stable IDs based on `repo + path + heading`.
 6. Agents retrieve memory through MCP tools with tenant filters applied.
 
@@ -107,11 +108,13 @@ Repository name is metadata:
 }
 ```
 
-Use `mimr-tech` for knowledge controlled by mimr-tech: public portfolio
-repositories, publishable skills, private judgment patterns, templates,
-research tools, and Upwork-related notes. Use `client-*` only when a customer
-or contract needs its own isolation boundary. Public/private status, topic, and
-repository type should be metadata, not tenants.
+`mimr-tech` is an example tenant for internal knowledge in this repository.
+Replace it with the tenant name that represents your company, studio, team, or
+solo business knowledge. Use that tenant for public repositories, publishable
+skills, private judgment patterns, templates, research tools, and sales or deal
+notes. Use `client-*` only when a customer or contract needs its own isolation
+boundary. Public/private status, topic, and repository type should be metadata,
+not tenants.
 
 ## GitHub Sync Strategy
 
@@ -229,15 +232,38 @@ Indexed paths:
 - `docs/**/*.md`
 - `adr/**/*.md`
 - `adrs/**/*.md`
+- `**/*.go`
+- `**/*.py`
+- `**/*.ts`
+- `**/*.tsx`
+- `**/*.js`
+- `**/*.jsx`
+- `**/*.rs`
+- `**/*.java`
+- `**/*.kt`
+- `**/*.sql`
+- `**/*.sh`
+- `api.yaml`
+- `openapi.yaml`
+- `**/*.yaml`
+- `**/*.yml`
+- `**/*.json`
+- `**/*.toml`
+- `**/*.proto`
+- `Dockerfile`
+- `compose.yml`
+- `Makefile`
 
 Ignored paths include `node_modules`, `dist`, `vendor`, `coverage`, and build
-artifacts.
+artifacts. Secret and runtime state paths such as `.env`, `secrets/**`, and
+`data/**` are also excluded.
 
 Exclusion applies before inclusion.
 
-## Markdown Indexing
+## Repository Context Indexing
 
-Markdown is chunked by heading. Each chunk preserves:
+Markdown is chunked by heading. Code, API definitions, and config files are
+indexed as repository context chunks. Each chunk preserves:
 
 - tenant
 - repository metadata
@@ -296,6 +322,34 @@ mem0-mcp.example.com -> http://mcp:8010
 
 Do not log service tokens or copy them into Markdown docs.
 
+## Tailscale Access
+
+Use Tailscale when your own devices need to reach mem0-local-platform on a home
+server. Keep GitHub Actions and external automation on the Cloudflare Access
+path; use Tailscale for private access, management, and local ingestion from
+devices in your Tailscale account or organization network.
+
+```bash
+mise run up-tailscale
+tailscale serve --bg --https=8443 localhost:8000
+tailscale serve --bg --https=9443 localhost:8010
+```
+
+Devices in your Tailscale network can point `mem0.env` at the Tailscale device name:
+
+```text
+MEM0_API_URL=https://home-server.tailnet-name.ts.net:8443
+```
+
+Tailscale Serve terminates HTTPS. You normally do not need to mount certificate
+files into compose. Serve configuration created with `--bg` is saved by the
+Tailscale daemon.
+Path-based routing such as `/mem0` and `/mem0-mcp` is possible, but API and MCP
+clients must work under a subpath. The default example uses port separation with
+`8443` and `9443`.
+
+See [Tailscale Access](docs/security/tailscale-access.md).
+
 ## Backend Responsibilities
 
 FalkorDB stores graph-oriented memory relationships.
@@ -329,6 +383,26 @@ Start the runtime:
 mise run up
 ```
 
+For a home server, start it in the background. Every service in `compose.yml`
+uses `restart: unless-stopped`, so containers restart when the Docker daemon
+starts.
+
+```bash
+mise run start
+```
+
+Start with explicit memory limits:
+
+```bash
+mise run up-resources
+```
+
+Start in the background with memory limits:
+
+```bash
+mise run start-resources
+```
+
 Pull the default Ollama models into the compose `ollama` service:
 
 ```bash
@@ -349,6 +423,9 @@ data/ollama/
 
 Back up `data/` with normal filesystem backup tools. The compose file does not
 use Docker named volumes for state.
+
+Docker memory sizing guide:
+[docs/operations/resource-sizing.md](docs/operations/resource-sizing.md)
 
 Run a dry ingestion against this repository:
 
@@ -413,10 +490,10 @@ workflow itself would need to be explicitly routed through that gateway.
 
 ## Repository Indexing Lifecycle
 
-1. Author updates Markdown in Git.
+1. Author updates code, API definitions, config, or Markdown in Git.
 2. Pull request review happens in the source repository.
 3. Merge or push triggers the reusable sync workflow.
-4. Changed Markdown files are cleaned and chunked.
+4. Changed eligible files are cleaned and chunked.
 5. Chunks are upserted into mem0 with stable IDs.
 6. Agents retrieve current context through MCP.
 

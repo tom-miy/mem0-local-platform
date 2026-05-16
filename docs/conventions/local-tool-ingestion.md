@@ -4,8 +4,9 @@ This guide is for sending short notes to mem0 from Obsidian, Raycast, Alfred,
 shell scripts, or similar local tools.
 
 This path is separate from GitHub Actions repository sync. Use the reusable
-workflow for repository Markdown. Use `remember-to-mem0` for a short working
-note, research note, or decision that has not yet been written back to Git.
+workflow for repository code, API definitions, config, and Markdown. Use
+`remember-to-mem0` for a short working note, research note, or decision that has
+not yet been written back to Git.
 
 ## Connection
 
@@ -15,13 +16,21 @@ From outside Docker Compose, use the Cloudflare Access protected API hostname:
 MEM0_API_URL=https://mem0-api.example.com
 ```
 
+From your own devices in a tailnet, you can also use the Tailscale device name:
+
+```text
+MEM0_API_URL=https://home-server.tailnet-name.ts.net:8443
+```
+
 Only services inside the compose network should use:
 
 ```text
 MEM0_API_URL=http://mem0:8000
 ```
 
-Local tools also need the Cloudflare Access service token values:
+Local tools using the Cloudflare Access path also need the Cloudflare Access
+service token values. Tailscale access does not need Cloudflare Access service
+tokens.
 
 ```text
 CLOUDFLARE_ACCESS_CLIENT_ID=...

@@ -95,10 +95,62 @@ run = "rm -rf .venv"
 description = "Render Docker Compose config. Requires Docker Compose v2."
 run = "docker compose -f compose.yml config"
 
+[tasks.compose-config-tailscale]
+description = "Render Docker Compose config with the Tailscale localhost-bind override."
+run = "docker compose -f compose.yml -f compose.tailscale.yml config"
+
+[tasks.compose-config-resources]
+description = "Render Docker Compose config with memory limit overrides."
+run = "docker compose -f compose.yml -f compose.resources.yml config"
+
+[tasks.compose-config-tailscale-resources]
+description = "Render Docker Compose config with Tailscale and memory limit overrides."
+run = "docker compose -f compose.yml -f compose.tailscale.yml -f compose.resources.yml config"
+
 [tasks.up]
 description = "Start the local compose runtime. Requires Docker Compose v2."
 run = "docker compose -f compose.yml up"
 
+[tasks.up-tailscale]
+description = "Start the local compose runtime with localhost binds for Tailscale Serve."
+run = "docker compose -f compose.yml -f compose.tailscale.yml up"
+
+[tasks.up-resources]
+description = "Start the local compose runtime with memory limit overrides."
+run = "docker compose -f compose.yml -f compose.resources.yml up"
+
+[tasks.up-tailscale-resources]
+description = "Start the local compose runtime with Tailscale and memory limit overrides."
+run = "docker compose -f compose.yml -f compose.tailscale.yml -f compose.resources.yml up"
+
+[tasks.start]
+description = "Start the local compose runtime in the background."
+run = "docker compose -f compose.yml up -d"
+
+[tasks.start-tailscale]
+description = "Start the local compose runtime in the background with localhost binds for Tailscale Serve."
+run = "docker compose -f compose.yml -f compose.tailscale.yml up -d"
+
+[tasks.start-resources]
+description = "Start the local compose runtime in the background with memory limit overrides."
+run = "docker compose -f compose.yml -f compose.resources.yml up -d"
+
+[tasks.start-tailscale-resources]
+description = "Start the local compose runtime in the background with Tailscale and memory limit overrides."
+run = "docker compose -f compose.yml -f compose.tailscale.yml -f compose.resources.yml up -d"
+
 [tasks.down]
 description = "Stop the local compose runtime. Requires Docker Compose v2."
 run = "docker compose -f compose.yml down"
+
+[tasks.down-tailscale]
+description = "Stop the local compose runtime started with the Tailscale override."
+run = "docker compose -f compose.yml -f compose.tailscale.yml down"
+
+[tasks.down-resources]
+description = "Stop the local compose runtime started with memory limit overrides."
+run = "docker compose -f compose.yml -f compose.resources.yml down"
+
+[tasks.down-tailscale-resources]
+description = "Stop the local compose runtime started with Tailscale and memory limit overrides."
+run = "docker compose -f compose.yml -f compose.tailscale.yml -f compose.resources.yml down"

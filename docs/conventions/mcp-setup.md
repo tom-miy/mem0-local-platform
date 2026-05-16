@@ -95,6 +95,24 @@ Print an SSE or HTTP remote MCP snippet:
 `CLOUDFLARE_TUNNEL_TOKEN` is not a client token. It belongs only to the
 `cloudflared` service that keeps the tunnel open.
 
+## Tailscale Setup
+
+For private access from your own devices to a home server, point `MEM0_API_URL`
+at the Tailscale device name:
+
+```text
+MEM0_API_URL=https://home-server.tailnet-name.ts.net:8443
+```
+
+If you want to reach the MCP service over the tailnet, configure Tailscale Serve
+on the server:
+
+```bash
+tailscale serve --bg --https=9443 localhost:8010
+```
+
+See [Tailscale Access](../security/tailscale-access.md).
+
 ## Verification
 
 Install dependencies:

@@ -243,7 +243,7 @@ Use the smallest model that fits the job:
 
 | Use case | Recommended level | Notes |
 | --- | --- | --- |
-| GitHub Markdown sync | embedder + small LLM | Sync uses prepared chunks with `infer=false`; embedding quality matters most. |
+| GitHub repository sync | embedder + small LLM | Sync sends prepared repository context chunks with `infer=false`; embedding quality matters most. |
 | English-only Raycast or short notes | 3B local LLM | `llama3.2:3b` is enough for light cleanup when Japanese quality is not important. |
 | Japanese or mixed-language notes | 4B to 8B multilingual LLM | Prefer `qwen3:4b` first, then `qwen3:8b` if quality is not enough. |
 | Noisy transcripts or long notes | 8B+ local LLM or hosted mini model | Better extraction quality is useful here. |

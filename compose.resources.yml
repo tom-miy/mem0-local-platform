@@ -1,0 +1,18 @@
+services:
+  falkordb:
+    mem_limit: 1g
+
+  qdrant:
+    mem_limit: 2g
+
+  ollama:
+    mem_limit: 8g
+
+  mem0:
+    mem_limit: 1g
+
+  mcp:
+    mem_limit: 512m
+
+  cloudflared:
+    mem_limit: 256m

@@ -5,7 +5,7 @@ Repository names are metadata. They are not tenants.
 Use tenants for security boundaries and use `repo` metadata for project-level
 retrieval.
 
-## Indexed Markdown
+## Indexed Repository Context
 
 The default ingestion rules index:
 
@@ -14,9 +14,32 @@ The default ingestion rules index:
 - `docs/**/*.md`
 - `adr/**/*.md`
 - `adrs/**/*.md`
+- `**/*.go`
+- `**/*.py`
+- `**/*.ts`
+- `**/*.tsx`
+- `**/*.js`
+- `**/*.jsx`
+- `**/*.rs`
+- `**/*.java`
+- `**/*.kt`
+- `**/*.sql`
+- `**/*.sh`
+- `api.yaml`
+- `openapi.yaml`
+- `**/*.yaml`
+- `**/*.yml`
+- `**/*.json`
+- `**/*.toml`
+- `**/*.proto`
+- `Dockerfile`
+- `compose.yml`
+- `Makefile`
 
 The CLI skips generated or dependency-heavy paths such as `node_modules`,
 `dist`, `vendor`, `coverage`, and `build`.
+Secret and runtime state paths such as `.env`, `secrets/**`, and `data/**` are
+also excluded.
 It also excludes binary and non-text formats such as PDF, Office documents,
 images, archives, and media files. Those need file-type-specific extractors
 before they should be indexed.
@@ -48,3 +71,5 @@ is rebuilt.
 
 Markdown is split by headings. Heading hierarchy is stored as metadata so a
 retrieved chunk can be traced back to its document context.
+Code, API definitions, and config files are also indexed as repository context,
+with path, document type, and repository metadata preserved.

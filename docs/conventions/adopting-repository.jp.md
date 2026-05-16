@@ -185,7 +185,7 @@ jobs:
 6. 対象ブランチを確認して実行します。
 
 この実行では、Git 管理下のファイル一覧を作り、その中から include/exclude
-ルールに合う Markdown だけを mem0 に送ります。
+ルールに合うコード、API 定義、設定、Markdown を mem0 に送ります。
 `node_modules`、`dist`、`coverage` などの除外パスは取り込みません。
 
 GitHub CLI を使う場合:
@@ -218,8 +218,21 @@ include:
   - handbook/**/*.md
   - docs/*.md
   - docs/**/*.md
+  - "**/*.go"
+  - "**/*.py"
+  - "**/*.ts"
+  - "**/*.yaml"
+  - "**/*.yml"
+  - "**/*.json"
+  - api.yaml
+  - openapi.yaml
 
 exclude:
+  - .env
+  - "**/.env"
+  - secrets/**
+  - "**/secrets/**"
+  - data/**
   - generated/**
   - "**/generated/**"
   - node_modules/**
@@ -229,9 +242,10 @@ exclude:
 YAML のキーは `include` と `exclude` です。
 ファイルがない場合は、mem0-local-platform 側の `.mem0-sync.default.yml` を使います。
 
-リポジトリ固有の docs パスがある場合は、`.mem0-sync.yml` で上書きします。
+リポジトリ固有のコード、API 定義、設定、ドキュメントのパスがある場合は、
+`.mem0-sync.yml` で上書きします。
 PDF、Office 文書、画像、アーカイブ、音声や動画はデフォルトで除外します。
-今の取り込みは UTF-8 テキストと Markdown 分割が前提だからです。
+今の取り込みは UTF-8 テキストが前提だからです。
 
 exclude は include より先に評価されます。
 

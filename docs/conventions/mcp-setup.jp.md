@@ -162,14 +162,20 @@ Cloudflare Access 経由で mem0 API に接続する場合:
 MEM0_API_URL=https://mem0-api.example.com
 ```
 
+Tailscale 経由で自宅サーバの mem0 API に接続する場合:
+
+```text
+MEM0_API_URL=https://home-server.tailnet-name.ts.net:8443
+```
+
 compose 内から mem0 API に接続する場合:
 
 ```text
 MEM0_API_URL=http://mem0:8000
 ```
 
-通常のデスクトップクライアントから使う場合は、Cloudflare Access で保護された
-ホスト名を使います。
+GitHub Actions や外部エージェントは Cloudflare Access で保護されたホスト名を使います。
+自分の Tailscale ネットワーク内の端末から自宅サーバへ接続する場合は Tailscale のデバイス名を使えます。
 
 ## Cloudflare Tunnel 経由の設定例
 
@@ -206,6 +212,23 @@ mem0-mcp.example.com -> http://mcp:8010
 これは実行基盤側の `cloudflared` サービスが Tunnel を維持するための
 トークンです。
 
+## Tailscale 経由の設定例
+
+自分の端末から自宅サーバへ接続する場合は、Tailscale 経由の URL を
+`MEM0_API_URL` に設定できます。
+
+```text
+MEM0_API_URL=https://home-server.tailnet-name.ts.net:8443
+```
+
+MCP サービスを Tailscale ネットワーク内で使う場合は、サーバ側で Tailscale Serve を設定します。
+
+```bash
+tailscale serve --bg --https=9443 localhost:8010
+```
+
+詳細は [Tailscale 接続](../security/tailscale-access.jp.md) を見てください。
+
 ## 必要な環境変数
 
 ローカル MCP サーバーを起動する側に設定します。
@@ -220,7 +243,7 @@ CLOUDFLARE_ACCESS_CLIENT_SECRET=...
 
 読み取り可能テナントは用途に合わせて変えます。
 
-mimr-tech 管理下の作業:
+社内ナレッジやチーム共通の知識だけを扱う作業:
 
 ```yaml
 read:
