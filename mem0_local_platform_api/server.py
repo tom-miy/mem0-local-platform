@@ -61,22 +61,31 @@ def delete_memories(filters: str = Query(default="{}")) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail="filters are required")
 
     memory = get_memory()
-    matches = memory.search("", filters=parsed, top_k=100)
-    results = _extract_results(matches)
     deleted = 0
 
-    for result in results:
-        memory_id = result.get("id") or result.get("memory_id")
-        if not memory_id:
-            continue
-        delete = getattr(memory, "delete", None)
-        if delete is None:
-            raise HTTPException(status_code=501, detail="mem0 Memory.delete is unavailable")
-        try:
-            delete(memory_id=memory_id)
-        except TypeError:
-            delete(memory_id)
-        deleted += 1
+    while True:
+        matches = memory.search("", filters=parsed, top_k=100)
+        results = _extract_results(matches)
+        if not results:
+            break
+
+        deleted_in_batch = 0
+        for result in results:
+            memory_id = result.get("id") or result.get("memory_id")
+            if not memory_id:
+                continue
+            delete = getattr(memory, "delete", None)
+            if delete is None:
+                raise HTTPException(status_code=501, detail="mem0 Memory.delete is unavailable")
+            try:
+                delete(memory_id=memory_id)
+            except TypeError:
+                delete(memory_id)
+            deleted += 1
+            deleted_in_batch += 1
+
+        if deleted_in_batch == 0:
+            raise HTTPException(status_code=500, detail="no deletable memory ids found")
 
     return {"status": "success", "deleted_count": deleted}
 

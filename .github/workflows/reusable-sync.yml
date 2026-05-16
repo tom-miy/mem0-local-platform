@@ -91,14 +91,32 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          write_changed_files() {
+            local base_ref="$1"
+            local head_ref="$2"
+            local status_file="$RUNNER_TEMP/sync-name-status.txt"
+            : > "$RUNNER_TEMP/sync-files.txt"
+            git diff --name-status --diff-filter=ACMRD "$base_ref" "$head_ref" > "$status_file"
+            while IFS=$'\t' read -r status path_a path_b; do
+              if [ -z "$status" ]; then
+                continue
+              fi
+              if [[ "$status" == R* ]]; then
+                printf '%s\n' "$path_a" "$path_b" >> "$RUNNER_TEMP/sync-files.txt"
+              else
+                printf '%s\n' "$path_a" >> "$RUNNER_TEMP/sync-files.txt"
+              fi
+            done < "$status_file"
+          }
+
           if [ "$SYNC_MODE" = "full" ]; then
             git ls-files > "$RUNNER_TEMP/sync-files.txt"
           elif [ "$SYNC_MODE" = "changed" ]; then
             if [ -n "${{ github.event.before || '' }}" ] &&
                [ "${{ github.event.before || '' }}" != "0000000000000000000000000000000000000000" ]; then
-              git diff --name-only --diff-filter=ACMR "${{ github.event.before }}" "$GITHUB_SHA" > "$RUNNER_TEMP/sync-files.txt"
+              write_changed_files "${{ github.event.before }}" "$GITHUB_SHA"
             elif git rev-parse HEAD^ >/dev/null 2>&1; then
-              git diff --name-only --diff-filter=ACMR HEAD^ HEAD > "$RUNNER_TEMP/sync-files.txt"
+              write_changed_files HEAD^ HEAD
             else
               git ls-files > "$RUNNER_TEMP/sync-files.txt"
             fi

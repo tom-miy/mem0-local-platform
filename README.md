@@ -494,7 +494,8 @@ workflow itself would need to be explicitly routed through that gateway.
 2. Pull request review happens in the source repository.
 3. Merge or push triggers the reusable sync workflow.
 4. Changed eligible files are cleaned and chunked.
-5. Chunks are upserted into mem0 with stable IDs.
-6. Agents retrieve current context through MCP.
+5. Existing chunks for the same `tenant + repo + path` are deleted before re-indexing.
+6. Deleted and renamed source paths remove stale chunks from mem0.
+7. Agents retrieve current context through MCP.
 
 See `docs/architecture/` and `docs/security/` for design notes.

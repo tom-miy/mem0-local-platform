@@ -104,6 +104,9 @@ def main() -> int:
 
     chunks: list[MarkdownChunk] = []
     indexed_files = 0
+    path_deletes = 0
+    delete_only_paths = 0
+    client = None if args.dry_run else build_mem0_client(args)
     for rel_path in files:
         normalized = normalize_repo_path(rel_path)
         if normalized is None or not should_index(
@@ -115,9 +118,26 @@ def main() -> int:
 
         source = safe_source_path(root, normalized)
         if source is None or not source.exists():
+            delete_only_paths += 1
+            if not args.dry_run:
+                assert client is not None
+                client.delete_path_memories(
+                    tenant=args.tenant,
+                    repo=repo,
+                    path=normalized.as_posix(),
+                )
+                path_deletes += 1
             continue
         indexed_files += 1
         text = source.read_text(encoding="utf-8")
+        if not args.dry_run:
+            assert client is not None
+            client.delete_path_memories(
+                tenant=args.tenant,
+                repo=repo,
+                path=normalized.as_posix(),
+            )
+            path_deletes += 1
         chunks.extend(
             chunk_markdown(
                 text,
@@ -135,23 +155,18 @@ def main() -> int:
     if args.dry_run:
         print(
             f"dry-run: {len(files)} candidate files, {indexed_files} indexed files, "
-            f"{len(chunks)} chunks",
+            f"{delete_only_paths} delete-only paths, {len(chunks)} chunks",
             file=sys.stderr,
         )
         return 0
 
-    client = Mem0HttpClient(
-        api_url=args.mem0_url,
-        api_key=args.mem0_api_key,
-        cloudflare_access_client_id=args.cloudflare_access_client_id,
-        cloudflare_access_client_secret=args.cloudflare_access_client_secret,
-        agent_id=args.agent_id,
-    )
+    assert client is not None
     for chunk in chunks:
         client.upsert(chunk)
 
     print(
         f"ingested: {len(files)} candidate files, {indexed_files} indexed files, "
+        f"{path_deletes} path deletes, {delete_only_paths} delete-only paths, "
         f"{len(chunks)} chunks",
         file=sys.stderr,
     )
@@ -200,13 +215,13 @@ def resolve_changed_files(root: Path, args: argparse.Namespace) -> Iterable[Path
 
     if args.since_ref:
         result = subprocess.run(
-            ["git", "diff", "--name-only", "--diff-filter=ACMR", args.since_ref, "HEAD"],
+            ["git", "diff", "--name-status", "--diff-filter=ACMRD", args.since_ref, "HEAD"],
             cwd=root,
             check=True,
             capture_output=True,
             text=True,
         )
-        return [Path(line) for line in result.stdout.splitlines() if line]
+        return parse_git_name_status(result.stdout)
 
     result = subprocess.run(
         ["git", "ls-files"],
@@ -251,7 +266,30 @@ def read_pattern_file(path: Path) -> list[str]:
 
 
 def matches_any(path: str, patterns: tuple[str, ...]) -> bool:
-    return any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns)
+    return any(matches_pattern(path, pattern) for pattern in patterns)
+
+
+def matches_pattern(path: str, pattern: str) -> bool:
+    if fnmatch.fnmatchcase(path, pattern):
+        return True
+    if pattern.startswith("**/") and fnmatch.fnmatchcase(path, pattern.removeprefix("**/")):
+        return True
+    return False
+
+
+def parse_git_name_status(output: str) -> list[Path]:
+    paths: list[Path] = []
+    for line in output.splitlines():
+        if not line:
+            continue
+        parts = line.split("\t")
+        status = parts[0]
+        if status.startswith("R") and len(parts) >= 3:
+            paths.append(Path(parts[1]))
+            paths.append(Path(parts[2]))
+        elif len(parts) >= 2:
+            paths.append(Path(parts[1]))
+    return paths
 
 
 def normalize_repo_path(path: Path) -> Path | None:
@@ -319,7 +357,6 @@ class Mem0HttpClient:
         metadata["stable_id"] = chunk.stable_id
 
         with httpx.Client(headers=self.headers, timeout=30) as client:
-            self.delete_existing(client, stable_id=chunk.stable_id)
             response = client.post(
                 f"{self.api_url}{self.add_path}",
                 json={
@@ -332,8 +369,20 @@ class Mem0HttpClient:
             )
             response.raise_for_status()
 
-    def delete_existing(self, client: Any, *, stable_id: str) -> None:
-        filters = {"stable_id": stable_id}
+    def delete_path_memories(self, *, tenant: str, repo: str, path: str) -> None:
+        import httpx
+
+        with httpx.Client(headers=self.headers, timeout=30) as client:
+            self.delete_existing(
+                client,
+                filters={
+                    "tenant": tenant,
+                    "repo": repo,
+                    "path": path,
+                },
+            )
+
+    def delete_existing(self, client: Any, *, filters: dict[str, Any]) -> None:
         response = client.delete(
             f"{self.api_url}{self.delete_path}",
             params={"filters": json.dumps(filters)},
@@ -361,6 +410,16 @@ def build_request_headers(
         headers["CF-Access-Client-Id"] = cloudflare_access_client_id
         headers["CF-Access-Client-Secret"] = cloudflare_access_client_secret
     return headers
+
+
+def build_mem0_client(args: argparse.Namespace) -> Mem0HttpClient:
+    return Mem0HttpClient(
+        api_url=args.mem0_url,
+        api_key=args.mem0_api_key,
+        cloudflare_access_client_id=args.cloudflare_access_client_id,
+        cloudflare_access_client_secret=args.cloudflare_access_client_secret,
+        agent_id=args.agent_id,
+    )
 
 
 if __name__ == "__main__":

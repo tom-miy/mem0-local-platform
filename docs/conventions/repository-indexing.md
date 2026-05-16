@@ -67,6 +67,11 @@ The reusable workflow supports two file-list modes:
 Use `full` for first indexing, policy changes, and recovery after backend state
 is rebuilt.
 
+For changed sync, deleted files and renamed source paths are also passed to the
+ingestion CLI. Existing chunks for the same `tenant + repo + path` are deleted
+before a file is re-indexed, so removed headings and deleted files do not leave
+stale chunks behind.
+
 ## Chunking
 
 Markdown is split by headings. Heading hierarchy is stored as metadata so a

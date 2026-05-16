@@ -70,6 +70,10 @@ mise run sync-path-rules
 
 初回投入、ルール変更後、バックエンド状態の再構築後は `full` を使います。
 
+`changed` では、削除されたファイルやリネーム元の path も取り込み CLI に渡します。
+ファイルを再索引する前に同じ `tenant + repo + path` の既存 chunk を削除するため、
+消した見出しや削除済みファイルの古い chunk が mem0 側に残らないようにします。
+
 ## 分割
 
 Markdown は見出し単位で分割します。

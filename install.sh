@@ -124,6 +124,18 @@ write_file() {
   cat > "$path"
 }
 
+write_file_from() {
+  local path="$1"
+  local source="$2"
+  if [ -e "$path" ] && [ "$force" != "true" ]; then
+    echo "refusing to overwrite existing file: $path" >&2
+    echo "rerun with --force after reviewing the existing file" >&2
+    exit 1
+  fi
+  mkdir -p "$(dirname "$path")"
+  cp "$source" "$path"
+}
+
 install_github_actions() {
   local dest
   dest="$(cd "$target_dir" && pwd)"
@@ -159,69 +171,7 @@ jobs:
       MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET: \${{ secrets.MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET }}
 YAML
 
-  write_file "$dest/.mem0-sync.yml" <<'EOF'
-include:
-  - README.md
-  - README*.md
-  - docs/*.md
-  - docs/**/*.md
-  - adr/*.md
-  - adr/**/*.md
-  - adrs/*.md
-  - adrs/**/*.md
-
-exclude:
-  - .git/**
-  - .venv/**
-  - .cache/**
-  - data/**
-  - node_modules/**
-  - "**/node_modules/**"
-  - dist/**
-  - "**/dist/**"
-  - vendor/**
-  - "**/vendor/**"
-  - coverage/**
-  - "**/coverage/**"
-  - build/**
-  - "**/build/**"
-  - __pycache__/**
-  - "**/__pycache__/**"
-  - "*.pyc"
-  - "**/*.pyc"
-  - "*.lock"
-  - "**/*.lock"
-  - package-lock.json
-  - "**/package-lock.json"
-  - pnpm-lock.yaml
-  - "**/pnpm-lock.yaml"
-  - yarn.lock
-  - "**/yarn.lock"
-  - "**/*.pdf"
-  - "**/*.xls"
-  - "**/*.xlsx"
-  - "**/*.doc"
-  - "**/*.docx"
-  - "**/*.ppt"
-  - "**/*.pptx"
-  - "**/*.png"
-  - "**/*.jpg"
-  - "**/*.jpeg"
-  - "**/*.gif"
-  - "**/*.webp"
-  - "**/*.svg"
-  - "**/*.ico"
-  - "**/*.zip"
-  - "**/*.tar"
-  - "**/*.tar.gz"
-  - "**/*.tgz"
-  - "**/*.7z"
-  - "**/*.rar"
-  - "**/*.mp3"
-  - "**/*.mp4"
-  - "**/*.mov"
-  - "**/*.wav"
-EOF
+  write_file_from "$dest/.mem0-sync.yml" "$repo_root/.mem0-sync.default.yml"
 
   cat <<EOF
 Installed GitHub Actions mem0 sync files into:

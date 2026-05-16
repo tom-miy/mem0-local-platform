@@ -8,14 +8,17 @@ from unittest.mock import patch
 from scripts.chunk_markdown import chunk_markdown, stable_chunk_id
 from scripts.cleanup_text import cleanup_text
 from scripts.ingest_repo import (
+    Mem0HttpClient,
     build_request_headers,
     load_patterns,
     normalize_repo_path,
+    parse_git_name_status,
     should_index,
 )
 from scripts.sync_path_rules import load_sync_config
 from mem0_local_platform_mcp.mem0_client import Mem0Client
 from mem0_local_platform_mcp.tenant_policy import TenantPolicy
+from mem0_local_platform_api.server import delete_memories
 
 
 class IndexingTests(unittest.TestCase):
@@ -73,6 +76,9 @@ Subscribe to the channel
         self.assertTrue(should_index(Path("docs/e2e.md")))
         self.assertTrue(should_index(Path("docs/nested/e2e.md")))
         self.assertTrue(should_index(Path("adr/0001-record.md")))
+        self.assertTrue(should_index(Path("main.go")))
+        self.assertTrue(should_index(Path("server.py")))
+        self.assertTrue(should_index(Path("package.json")))
         self.assertTrue(should_index(Path("cmd/server/main.go")))
         self.assertTrue(should_index(Path("api/openapi.yaml")))
         self.assertTrue(should_index(Path("compose.yml")))
@@ -134,6 +140,86 @@ Subscribe to the channel
     def test_normalize_repo_path_rejects_traversal(self) -> None:
         self.assertEqual(normalize_repo_path(Path("/docs/e2e.md")), Path("docs/e2e.md"))
         self.assertIsNone(normalize_repo_path(Path("../README.md")))
+
+    def test_parse_git_name_status_preserves_deleted_and_renamed_paths(self) -> None:
+        self.assertEqual(
+            parse_git_name_status(
+                "M\tdocs/changed.md\n"
+                "D\tdocs/deleted.md\n"
+                "R100\tdocs/old.md\tdocs/new.md\n"
+            ),
+            [
+                Path("docs/changed.md"),
+                Path("docs/deleted.md"),
+                Path("docs/old.md"),
+                Path("docs/new.md"),
+            ],
+        )
+
+    def test_delete_path_memories_filters_by_tenant_repo_and_path(self) -> None:
+        class FakeResponse:
+            status_code = 200
+
+            def raise_for_status(self) -> None:
+                return None
+
+        class FakeClient:
+            def __init__(self) -> None:
+                self.params: dict[str, str] | None = None
+
+            def delete(self, _url: str, *, params: dict[str, str]) -> FakeResponse:
+                self.params = params
+                return FakeResponse()
+
+        fake = FakeClient()
+        client = Mem0HttpClient(
+            api_url="http://mem0",
+            api_key="",
+            cloudflare_access_client_id="",
+            cloudflare_access_client_secret="",
+            agent_id="test",
+        )
+
+        client.delete_existing(
+            fake,
+            filters={
+                "tenant": "mimr-tech",
+                "repo": "repo",
+                "path": "docs/example.md",
+            },
+        )
+
+        self.assertIsNotNone(fake.params)
+        self.assertEqual(
+            json.loads(fake.params["filters"]),  # type: ignore[index]
+            {
+                "tenant": "mimr-tech",
+                "repo": "repo",
+                "path": "docs/example.md",
+            },
+        )
+
+    def test_delete_memories_deletes_more_than_one_search_page(self) -> None:
+        class FakeMemory:
+            def __init__(self) -> None:
+                self.ids = [f"memory-{index}" for index in range(105)]
+                self.deleted: list[str] = []
+
+            def search(self, _query: str, *, filters: dict[str, object], top_k: int) -> dict[str, object]:
+                self.assert_filters = filters
+                remaining = [memory_id for memory_id in self.ids if memory_id not in self.deleted]
+                return {"results": [{"id": memory_id} for memory_id in remaining[:top_k]]}
+
+            def delete(self, *, memory_id: str) -> None:
+                self.deleted.append(memory_id)
+
+        memory = FakeMemory()
+
+        with patch("mem0_local_platform_api.server.get_memory", return_value=memory):
+            result = delete_memories(filters='{"tenant": "mimr-tech", "repo": "repo"}')
+
+        self.assertEqual(result["deleted_count"], 105)
+        self.assertEqual(len(memory.deleted), 105)
 
     def test_tenant_policy_rejects_out_of_boundary_reads(self) -> None:
         policy = TenantPolicy(read_tenants=("mimr-tech",))
