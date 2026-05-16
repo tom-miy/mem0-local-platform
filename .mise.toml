@@ -46,6 +46,18 @@ description = "Parse GitHub workflow YAML files."
 depends = ["setup"]
 run = "uv run python -c \"import yaml; yaml.safe_load(open('.github/workflows/reusable-sync.yml')); yaml.safe_load(open('.github/workflows/sync-memory.yml')); print('workflow yaml ok')\""
 
+[tasks.sync-path-rules]
+description = "Render include/exclude path files from .mem0-sync.yml."
+depends = ["setup"]
+run = """
+.venv/bin/python -m scripts.sync_path_rules \
+  --source-root . \
+  --platform-root . \
+  --config-file .mem0-sync.yml \
+  --include-output .cache/include-paths.txt \
+  --exclude-output .cache/exclude-paths.txt
+"""
+
 [tasks.check]
 description = "Run local validation checks."
 depends = ["compile", "test", "workflow-check", "ingest-dry-run"]

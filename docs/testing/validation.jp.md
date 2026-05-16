@@ -14,6 +14,12 @@ dry-run モードで取り込みを実行します。
 mise run ingest-dry-run
 ```
 
+リポジトリ同期のパスルールを include/exclude に変換します。
+
+```bash
+mise run sync-path-rules
+```
+
 mem0 が起動している場合は、`--dry-run` を外すとチャンクを更新または追加できます。
 
 Compose 実行環境では、compose ネットワーク内でヘルスチェックを確認できます。

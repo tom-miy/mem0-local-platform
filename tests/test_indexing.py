@@ -7,7 +7,13 @@ from unittest.mock import patch
 
 from scripts.chunk_markdown import chunk_markdown, stable_chunk_id
 from scripts.cleanup_text import cleanup_text
-from scripts.ingest_repo import build_request_headers, load_patterns, normalize_repo_path, should_index
+from scripts.ingest_repo import (
+    build_request_headers,
+    load_patterns,
+    normalize_repo_path,
+    should_index,
+)
+from scripts.sync_path_rules import load_sync_config
 from mem0_local_platform_mcp.tenant_policy import TenantPolicy
 
 
@@ -74,6 +80,38 @@ Subscribe to the channel
 
     def test_load_patterns_prefers_supplied_rules(self) -> None:
         self.assertEqual(load_patterns(["README.md"], None, ("docs/**/*.md",)), ("README.md",))
+
+    def test_repo_sync_path_files_index_local_mcp_docs(self) -> None:
+        config = load_sync_config(Path(".mem0-sync.yml"))
+
+        self.assertTrue(
+            should_index(
+                Path("mcp/tools/README.jp.md"),
+                include_patterns=config.include,
+                exclude_patterns=config.exclude,
+            )
+        )
+        self.assertFalse(
+            should_index(
+                Path("data/qdrant/storage.md"),
+                include_patterns=config.include,
+                exclude_patterns=config.exclude,
+            )
+        )
+        self.assertFalse(
+            should_index(
+                Path("docs/spec.pdf"),
+                include_patterns=config.include,
+                exclude_patterns=config.exclude,
+            )
+        )
+        self.assertFalse(
+            should_index(
+                Path("docs/diagram.png"),
+                include_patterns=config.include,
+                exclude_patterns=config.exclude,
+            )
+        )
 
     def test_normalize_repo_path_rejects_traversal(self) -> None:
         self.assertEqual(normalize_repo_path(Path("/docs/e2e.md")), Path("docs/e2e.md"))

@@ -28,48 +28,11 @@ on:
         required: false
         type: string
         default: main
-      include_paths:
-        description: Newline-delimited glob patterns to index.
+      sync_config_file:
+        description: Path in the source repository containing mem0 sync path rules.
         required: false
         type: string
-        default: |
-          README.md
-          README*.md
-          docs/*.md
-          docs/**/*.md
-          adr/*.md
-          adr/**/*.md
-          adrs/*.md
-          adrs/**/*.md
-      exclude_paths:
-        description: Newline-delimited glob patterns to ignore.
-        required: false
-        type: string
-        default: |
-          .git/**
-          .venv/**
-          node_modules/**
-          **/node_modules/**
-          dist/**
-          **/dist/**
-          vendor/**
-          **/vendor/**
-          coverage/**
-          **/coverage/**
-          build/**
-          **/build/**
-          __pycache__/**
-          **/__pycache__/**
-          *.pyc
-          **/*.pyc
-          *.lock
-          **/*.lock
-          package-lock.json
-          **/package-lock.json
-          pnpm-lock.yaml
-          **/pnpm-lock.yaml
-          yarn.lock
-          **/yarn.lock
+        default: .mem0-sync.yml
     secrets:
       MEM0_API_URL:
         required: true
@@ -102,16 +65,24 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081
 
+      - name: Install platform dependencies
+        working-directory: platform
+        shell: bash
+        run: uv sync --no-dev
+
       - name: Write path rules
+        working-directory: platform
+        env:
+          SYNC_CONFIG_FILE: ${{ inputs.sync_config_file }}
         shell: bash
         run: |
           set -euo pipefail
-          cat > "$RUNNER_TEMP/include-paths.txt" <<'EOF'
-          ${{ inputs.include_paths }}
-          EOF
-          cat > "$RUNNER_TEMP/exclude-paths.txt" <<'EOF'
-          ${{ inputs.exclude_paths }}
-          EOF
+          .venv/bin/python -m scripts.sync_path_rules \
+            --source-root ../source \
+            --platform-root . \
+            --config-file "$SYNC_CONFIG_FILE" \
+            --include-output "$RUNNER_TEMP/include-paths.txt" \
+            --exclude-output "$RUNNER_TEMP/exclude-paths.txt"
 
       - name: Detect files to sync
         working-directory: source
@@ -148,7 +119,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          uv run python -m scripts.ingest_repo \
+          .venv/bin/python -m scripts.ingest_repo \
             --root ../source \
             --tenant "$TENANT" \
             --repo "$REPO_NAME" \

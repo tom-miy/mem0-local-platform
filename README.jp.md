@@ -119,6 +119,15 @@ jobs:
 詳細は [別リポジトリへの導入手順](docs/conventions/adopting-repository.jp.md)
 を見てください。
 
+薄い呼び出し側ワークフローとパス設定ファイルは、`install.sh` で生成できます。
+
+```bash
+./install.sh \
+  --target github-actions \
+  --target-dir /path/to/repository \
+  --tenant mimr-tech
+```
+
 Raycast などローカルツールから短いメモを入れる場合は
 [Raycast などローカルツールからの取り込み](docs/conventions/local-tool-ingestion.jp.md)
 を見てください。
@@ -141,10 +150,21 @@ Raycast などローカルツールから短いメモを入れる場合は
 - `sync_mode`: `changed` または `full`
 - `tenant`: 書き込み先テナント
 - `repo`: メタデータとして保存するリポジトリ名
-- `include_paths`: 索引対象パス
-- `exclude_paths`: 除外パス
+- `sync_config_file`: パスルールを書いた設定ファイル
 
-`exclude_paths` は `include_paths` より先に評価されます。
+通常は各リポジトリに次のファイルを置きます。
+
+```text
+.mem0-sync.yml
+```
+
+共通ワークフローは、このファイルがあれば読み込みます。
+なければ mem0-local-platform 側の `.mem0-sync.default.yml` を使います。
+共通ワークフロー本体には include/exclude の実体を置きません。
+YAML のキーは `include` と `exclude` です。
+ローカル確認では `mise run sync-path-rules` で同じ変換を確認できます。
+
+`exclude` は `include` より先に評価されます。
 
 同期モードの使い分け:
 

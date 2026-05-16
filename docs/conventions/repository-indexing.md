@@ -17,15 +17,22 @@ The default ingestion rules index:
 
 The CLI skips generated or dependency-heavy paths such as `node_modules`,
 `dist`, `vendor`, `coverage`, and `build`.
+It also excludes binary and non-text formats such as PDF, Office documents,
+images, archives, and media files. Those need file-type-specific extractors
+before they should be indexed.
 
-Repositories can override these rules through the reusable workflow inputs:
+Repositories can keep path rules in a source-controlled YAML file:
 
-- `include_paths`
-- `exclude_paths`
+```text
+.mem0-sync.yml
+```
 
-Exclusion is applied before inclusion. Use this when a repository keeps
-Markdown under a project-specific docs directory or needs to skip generated
-Markdown.
+The reusable workflow reads that file when it exists. If it is absent, it uses
+`.mem0-sync.default.yml` from the platform repository. The workflow itself does
+not carry path-rule defaults.
+The YAML keys are `include` and `exclude`.
+
+Exclusion is applied before inclusion.
 
 ## Sync Modes
 

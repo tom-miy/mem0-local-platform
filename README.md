@@ -97,20 +97,6 @@ jobs:
     with:
       sync_mode: ${{ github.event.inputs.sync_mode || 'changed' }}
       tenant: mimr-tech
-      include_paths: |
-        README.md
-        README*.md
-        docs/*.md
-        docs/**/*.md
-        adr/*.md
-        adr/**/*.md
-      exclude_paths: |
-        node_modules/**
-        **/node_modules/**
-        dist/**
-        **/dist/**
-        coverage/**
-        **/coverage/**
     secrets:
       MEM0_API_URL: ${{ secrets.MEM0_API_URL }}
       MEM0_API_KEY: ${{ secrets.MEM0_API_KEY }}
@@ -118,15 +104,35 @@ jobs:
       CLOUDFLARE_ACCESS_CLIENT_SECRET: ${{ secrets.CLOUDFLARE_ACCESS_CLIENT_SECRET }}
 ```
 
+You can generate that workflow and path-rule files in a target repository:
+
+```bash
+./install.sh \
+  --target github-actions \
+  --target-dir /path/to/repository \
+  --tenant mimr-tech
+```
+
 The reusable workflow checks out the source repository, checks out this platform
-repository for the ingestion CLI, sets up `uv`, and builds the file list from
-`sync_mode`.
+repository for the ingestion CLI, sets up `uv`, creates the platform `.venv`,
+and builds the file list from `sync_mode`.
 For repository sync from GitHub Actions, `MEM0_API_URL` should be the
 Cloudflare-protected mem0 API hostname, not the internal compose URL.
 GitHub Actions authenticates to Cloudflare Access with
 `CLOUDFLARE_ACCESS_CLIENT_ID` and `CLOUDFLARE_ACCESS_CLIENT_SECRET`.
 `CLOUDFLARE_TUNNEL_TOKEN` is only used by the platform runtime's
 `cloudflared` service.
+
+Each repository can keep path rules in a source-controlled config file:
+
+```text
+.mem0-sync.yml
+```
+
+The reusable workflow reads that file when it exists. If it is absent, it uses
+`.mem0-sync.default.yml` from this platform repository. The workflow itself does
+not carry path-rule defaults.
+The YAML keys are `include` and `exclude`.
 
 `sync_mode` controls the file list:
 
@@ -151,8 +157,7 @@ Indexed paths:
 Ignored paths include `node_modules`, `dist`, `vendor`, `coverage`, and build
 artifacts.
 
-The defaults can be overridden per repository through `include_paths` and
-`exclude_paths`. Exclusion applies before inclusion.
+Exclusion applies before inclusion.
 
 ## Markdown Indexing
 

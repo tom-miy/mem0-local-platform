@@ -15,6 +15,12 @@ Run ingestion in dry-run mode:
 mise run ingest-dry-run
 ```
 
+Render repository sync path rules:
+
+```bash
+mise run sync-path-rules
+```
+
 When mem0 is running, remove `--dry-run` to upsert chunks.
 
 The compose runtime exposes a health check inside the compose network:

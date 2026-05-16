@@ -17,15 +17,27 @@
 
 CLI は、生成物や依存関係が多いパスを除外します。
 例は `node_modules`、`dist`、`vendor`、`coverage`、`build` です。
+PDF、Office 文書、画像、アーカイブ、音声や動画も除外します。
+これらはファイル種別ごとの抽出処理を用意してから索引対象にします。
 
-リポジトリごとに、共通ワークフローの入力でこのルールを上書きできます。
+リポジトリごとのパスルールは、Git 管理する設定ファイルに置けます。
 
-- `include_paths`
-- `exclude_paths`
+```text
+.mem0-sync.yml
+```
+
+共通ワークフローは、このファイルがあれば読み込みます。
+なければ mem0-local-platform 側の `.mem0-sync.default.yml` を使います。
+共通ワークフロー本体には include/exclude の実体を置きません。
+YAML のキーは `include` と `exclude` です。
+
+ローカルでは次で include/exclude へ変換できます。
+
+```bash
+mise run sync-path-rules
+```
 
 除外は取り込み対象の判定より先に適用されます。
-リポジトリ固有の docs ディレクトリがある場合や、生成された Markdown を
-除外したい場合に使います。
 
 ## 同期モード
 
