@@ -132,26 +132,37 @@ Subscribe to the channel
         self.assertIsNone(normalize_repo_path(Path("../README.md")))
 
     def test_tenant_policy_rejects_out_of_boundary_reads(self) -> None:
-        policy = TenantPolicy(read_tenants=("mimr-tech",), write_tenant="mimr-tech")
+        policy = TenantPolicy(read_tenants=("mimr-tech",))
 
         self.assertEqual(policy.readable(["mimr-tech"]), ("mimr-tech",))
         with self.assertRaises(ValueError):
             policy.readable(["client-secret"])
 
-    def test_tenant_policy_loads_read_write_yaml(self) -> None:
+    def test_tenant_policy_loads_read_only_yaml(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             policy_path = Path(tmp) / "mem0.policy.yml"
             policy_path.write_text(
-                "read:\n  - mimr-tech\n  - client-tenant\nwrite:\n  - client-tenant\n",
+                "read:\n  - mimr-tech\n  - client-tenant\n",
                 encoding="utf-8",
             )
 
             policy = TenantPolicy.from_file(policy_path)
 
         self.assertEqual(policy.read_tenants, ("mimr-tech", "client-tenant"))
-        self.assertEqual(policy.write_tenant, "client-tenant")
 
-    def test_tenant_policy_rejects_multiple_write_tenants(self) -> None:
+    def test_tenant_policy_accepts_legacy_single_write_tenant(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            policy_path = Path(tmp) / "mem0.policy.yml"
+            policy_path.write_text(
+                "read:\n  - mimr-tech\nwrite:\n  - client-tenant\n",
+                encoding="utf-8",
+            )
+
+            policy = TenantPolicy.from_file(policy_path)
+
+        self.assertEqual(policy.read_tenants, ("mimr-tech",))
+
+    def test_tenant_policy_rejects_legacy_multiple_write_tenants(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             policy_path = Path(tmp) / "mem0.policy.yml"
             policy_path.write_text(
@@ -166,7 +177,7 @@ Subscribe to the channel
         with tempfile.TemporaryDirectory() as tmp:
             policy_path = Path(tmp) / "mem0.policy.yml"
             policy_path.write_text(
-                "read:\n  - mimr-tech\n  - client-tenant\nwrite:\n  - client-tenant\n",
+                "read:\n  - mimr-tech\n  - client-tenant\n",
                 encoding="utf-8",
             )
 
@@ -182,9 +193,8 @@ Subscribe to the channel
                 policy = TenantPolicy.from_env()
 
         self.assertEqual(policy.read_tenants, ("mimr-tech", "client-tenant"))
-        self.assertEqual(policy.write_tenant, "client-tenant")
 
-    def test_tenant_policy_from_env_fallback_adds_write_tenant_to_readable(self) -> None:
+    def test_tenant_policy_from_env_uses_read_tenants_only(self) -> None:
         with patch.dict(
             "os.environ",
             {
@@ -195,8 +205,7 @@ Subscribe to the channel
         ):
             policy = TenantPolicy.from_env()
 
-        self.assertEqual(policy.read_tenants, ("mimr-tech", "client-tenant"))
-        self.assertEqual(policy.write_tenant, "client-tenant")
+        self.assertEqual(policy.read_tenants, ("mimr-tech",))
 
     def test_build_request_headers_includes_cloudflare_access(self) -> None:
         headers = build_request_headers(

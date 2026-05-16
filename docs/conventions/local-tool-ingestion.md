@@ -1,7 +1,7 @@
 # Local Tool Ingestion
 
-This guide is for sending short notes to mem0 from Raycast, Alfred, shell
-scripts, or similar local tools.
+This guide is for sending short notes to mem0 from Obsidian, Raycast, Alfred,
+shell scripts, or similar local tools.
 
 This path is separate from GitHub Actions repository sync. Use the reusable
 workflow for repository Markdown. Use `remember-to-mem0` for a short working
@@ -67,6 +67,43 @@ uv run remember-to-mem0 \
   --file /path/to/note.md
 ```
 
+You can also call the Python module directly. It behaves the same as the
+`remember-to-mem0` script entrypoint.
+
+```bash
+uv run python -m scripts.remember_text \
+  --tenant mimr-tech \
+  --source local-file \
+  --type note \
+  --file /path/to/note.md
+```
+
+## Obsidian
+
+To register an Obsidian vault note, pass the note file path to `--file`:
+
+```bash
+uv run remember-to-mem0 \
+  --tenant mimr-tech \
+  --source obsidian \
+  --type note \
+  --path "obsidian/ai-workflows/e2e-debugging.md" \
+  --tag obsidian \
+  --tag debugging \
+  --file "$HOME/Obsidian/Vault/ai-workflows/e2e-debugging.md"
+```
+
+`--path` is the relative search path stored in mem0 metadata. It does not need
+to expose the real local filesystem path.
+
+Use a separate `client-*` tenant only when a customer or contract requires an
+isolation boundary. Use `--tag` and `--path` for public/private status,
+repository type, and topic metadata.
+
+If you call this from an Obsidian shell command plugin or shortcut, pass the
+current file path to `--file`. Limit the source folders so notes containing
+secrets are not sent to mem0.
+
 ## Raycast Script Command
 
 Example Raycast script command:
@@ -101,5 +138,6 @@ pbpaste | \
     --tag clipboard
 ```
 
-Important long-lived knowledge should still be moved back into Git, Markdown, or
-an ADR. mem0 is retrieval infrastructure, not the source of truth.
+Important long-lived knowledge should still be moved back into Git, Markdown,
+Obsidian, or an ADR. mem0 is the retrieval index used by agents, not the only
+place that information should live.

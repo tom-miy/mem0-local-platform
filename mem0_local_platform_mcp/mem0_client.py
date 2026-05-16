@@ -19,7 +19,6 @@ class Mem0Client:
             cloudflare_access_client_id=os.getenv("CLOUDFLARE_ACCESS_CLIENT_ID", ""),
             cloudflare_access_client_secret=os.getenv("CLOUDFLARE_ACCESS_CLIENT_SECRET", ""),
         )
-        self.add_path = os.getenv("MEM0_ADD_PATH", "/add")
         self.search_path = os.getenv("MEM0_SEARCH_PATH", "/search")
 
     def search(
@@ -36,20 +35,6 @@ class Mem0Client:
         return self._post(
             self.search_path,
             {"query": query, "top_k": limit, "filters": filters},
-        )
-
-    def remember(self, memory: str, *, tenant: str, metadata: dict[str, Any]) -> dict[str, Any]:
-        merged = dict(metadata)
-        merged["tenant"] = tenant
-        return self._post(
-            self.add_path,
-            {
-                "messages": [{"role": "user", "content": memory}],
-                "user_id": tenant,
-                "agent_id": "mcp",
-                "metadata": merged,
-                "infer": False,
-            },
         )
 
     def list_recent(

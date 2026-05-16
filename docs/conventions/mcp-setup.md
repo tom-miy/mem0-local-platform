@@ -13,12 +13,12 @@ in `mem0.env`, and do not commit that file.
 ## Tools
 
 - `search_memory`
-- `remember`
 - `related_repo_context`
 - `recent_project_memories`
 
-Search tools only read configured readable tenants. `remember` only writes to
-the configured write tenant.
+MCP is read-only. Search tools only read configured readable tenants. Register
+new memory through GitHub Actions, `remember-to-mem0`, or Obsidian / Raycast
+wrappers around the Python CLI.
 
 ## Connection Modes
 
@@ -48,13 +48,10 @@ CLOUDFLARE_ACCESS_CLIENT_ID=...
 CLOUDFLARE_ACCESS_CLIENT_SECRET=...
 ```
 
-Set readable and writable tenants in `mem0.policy.yml`:
+Set readable tenants in `mem0.policy.yml`:
 
 ```yaml
 read:
-  - mimr-tech
-
-write:
   - mimr-tech
 ```
 

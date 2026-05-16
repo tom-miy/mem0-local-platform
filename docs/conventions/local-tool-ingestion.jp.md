@@ -1,7 +1,7 @@
-# Raycast などローカルツールからの取り込み
+# ローカルツールからの取り込み
 
-この手順は、Raycast、Alfred、シェルスクリプトなどから短いメモを mem0 に
-登録するためのものです。
+この手順は、Obsidian、Raycast、Alfred、シェルスクリプトなどから短いメモを
+mem0 に登録するためのものです。
 
 GitHub Actions の同期とは別経路です。
 リポジトリの Markdown を同期する場合は共通ワークフローを使います。
@@ -76,6 +76,44 @@ uv run remember-to-mem0 \
   --type note \
   --file /path/to/note.md
 ```
+
+Python モジュールとして直接呼ぶこともできます。
+動作は `remember-to-mem0` と同じです。
+
+```bash
+uv run python -m scripts.remember_text \
+  --tenant mimr-tech \
+  --source local-file \
+  --type note \
+  --file /path/to/note.md
+```
+
+## Obsidian から登録する
+
+Obsidian の保管庫にあるノートを登録する場合は、対象ノートのファイルパスを
+`--file` に渡します。
+
+```bash
+uv run remember-to-mem0 \
+  --tenant mimr-tech \
+  --source obsidian \
+  --type note \
+  --path "obsidian/ai-workflows/e2e-debugging.md" \
+  --tag obsidian \
+  --tag debugging \
+  --file "$HOME/Obsidian/Vault/ai-workflows/e2e-debugging.md"
+```
+
+`--path` は mem0 側に保存する検索用の相対パスです。
+手元の実ファイルパスをそのまま保存する必要はありません。
+
+顧客や契約で隔離が必要なノートは `--tenant client-...` に分けます。
+公開可否やリポジトリ種別だけでテナントを増やさず、必要なら `--tag` や `--path`
+で検索しやすくします。
+
+Obsidian の Shell Commands プラグインやショートカットから呼ぶ場合も、選択中ファイルの
+パスを `--file` に渡します。秘密情報を含むノートを送らないよう、登録対象の
+フォルダを限定してください。
 
 ## Raycast スクリプトコマンド
 
@@ -159,9 +197,10 @@ GitHub Actions の共通ワークフロー:
 
 `remember-to-mem0`:
 
+- Obsidian のノートを手動で入れる
 - Raycast などから一時メモを入れる
 - 作業中の判断や調査メモをすぐ登録する
 - Git にまだ書いていない短い文脈を入れる
 
 重要な決定や長く残す知識は、後で Git / Markdown / ADR に戻してください。
-mem0 は正本ではありません。
+mem0 は唯一の保存先ではなく、AI エージェントが検索するための索引です。

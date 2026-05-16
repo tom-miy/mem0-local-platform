@@ -6,7 +6,7 @@ Tenants are not repository categories. Repository names are stored as metadata.
 
 ## Basic Rules
 
-- Use tenants for read and write boundaries.
+- Use tenants for readable boundaries and registration destinations.
 - Do not create one tenant per repository.
 - Use tenant names that match operational isolation decisions.
 - Split tenants when customer data or contract boundaries differ.
@@ -55,15 +55,12 @@ Store repository context as metadata:
 
 `tenant` is the isolation boundary. `repo` and `path` are retrieval metadata.
 
-## Read And Write Policy
+## Read And Registration Policy
 
-MCP separates readable tenants from the single write tenant:
+MCP only configures readable tenants:
 
 ```yaml
 read:
-  - mimr-tech
-
-write:
   - mimr-tech
 ```
 
@@ -73,14 +70,10 @@ For client work:
 read:
   - mimr-tech
   - client-18384728-acme
-
-write:
-  - client-18384728-acme
 ```
 
-Multiple readable tenants are allowed. The write tenant must contain exactly one
-tenant so an agent cannot accidentally write customer information to the wrong
-boundary.
+Multiple readable tenants are allowed. Register new memory through GitHub
+Actions or the Python CLI, and set the destination tenant there.
 
 ## Review Checklist
 
@@ -88,6 +81,6 @@ When changing tenant settings, check:
 
 - Is the tenant really a security boundary?
 - Is a repository or project name being used as a tenant?
-- Does the write tenant match the current work target?
+- Does the registration `tenant` match the current work target?
 - Are unnecessary client tenants included in the read list?
 - Does the GitHub Actions `tenant` input match the intended destination?

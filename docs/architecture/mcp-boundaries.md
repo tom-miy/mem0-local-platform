@@ -3,26 +3,22 @@
 The MCP server is the policy enforcement layer for agent access.
 
 Tools exposed by `mcp/server.py` apply readable tenant filters before querying
-mem0. Write operations use one configured write tenant.
+mem0. MCP does not register new memory.
 
 ## Tools
 
 - `search_memory` searches readable tenants.
-- `remember` writes to the configured write tenant.
 - `related_repo_context` searches with repository metadata in mind.
 - `recent_project_memories` retrieves project-scoped context.
 
-## Read And Write Separation
+## Read Boundary
 
-Configure read tenants and the write tenant in `mem0.policy.yml`:
+Configure readable tenants in `mem0.policy.yml`:
 
 ```yaml
 read:
   - mimr-tech
-
-write:
-  - mimr-tech
 ```
 
-The write tenant is automatically included in readable tenants so newly written
-context can be found by the same agent boundary.
+Register memory through GitHub Actions or the Python CLI. This avoids
+persisting an AI agent's temporary guesses through MCP.

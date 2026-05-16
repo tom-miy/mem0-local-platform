@@ -1,16 +1,68 @@
 # mem0-local-platform
 
-Developer Knowledge Infrastructure for local-first AI-assisted engineering.
+AI Agent Knowledge Infrastructure for local-first engineering workflows.
 
 Japanese documentation: [README.jp.md](README.jp.md)
 
 This repository runs a self-hosted mem0 layer backed by FalkorDB and Qdrant,
 exposes tenant-aware memory tools over MCP, and provides one reusable GitHub
 Actions workflow for keeping repository knowledge in sync.
+With the local Ollama configuration, indexed knowledge can stay inside your own
+Docker runtime instead of being sent to an external AI SaaS.
 
-mem0 is not the source of truth. Git repositories, Markdown docs, ADRs, and
-Obsidian notes remain canonical. mem0 is the retrieval cache and runtime context
-layer that agents use while working.
+It can:
+
+- sync README, docs, and ADR files from GitHub pushes
+- remember local Markdown, Obsidian notes, and Raycast notes through a Python CLI
+- store context in a FalkorDB graph and a Qdrant vector search index
+- expose the indexed context to Codex, Claude, and local agents through MCP
+- configure which knowledge boundaries agents may search through MCP
+
+The benefit is that AI agents can reuse prior decisions, design notes, and
+research findings without asking for the same context again. Git repositories,
+Markdown, ADRs, and Obsidian notes remain the durable knowledge sources; mem0 is
+the rebuildable retrieval index built from them.
+FalkorDB handles relationship-oriented memory, while Qdrant handles semantic
+similarity retrieval. If you configure an external LLM or embedding provider,
+review what text is sent to that provider.
+
+## Usage Examples
+
+Keep design notes in a repository:
+
+1. Update `docs/e2e.md` or `adr/001-retry-policy.md`.
+2. Push to GitHub.
+3. The reusable workflow syncs only changed Markdown into mem0.
+4. Codex or Claude can retrieve prior design decisions through MCP.
+
+Register a short working note immediately:
+
+```bash
+uv run remember-to-mem0 \
+  --tenant mimr-tech \
+  --source obsidian \
+  --type note \
+  --tag debugging \
+  --file "$HOME/Obsidian/Vault/ai-workflows/e2e-debugging.md"
+```
+
+Search from an AI agent:
+
+```text
+search_memory("How should trace.zip be handled when E2E fails?")
+```
+
+Separate customer-specific knowledge:
+
+```yaml
+read:
+  - mimr-tech
+  - client-acme
+```
+
+With this policy, the agent can read both `mimr-tech` and `client-acme`. Register
+new customer-specific memory with the GitHub Actions `tenant` input or
+`--tenant client-acme` in the Python CLI.
 
 ## Architecture
 
@@ -167,6 +219,9 @@ To run a full sync manually, open the target repository in GitHub, go to
 `Actions`, choose `Sync Repository Memory`, run the workflow, and select
 `sync_mode=full`.
 
+For short notes from Obsidian, Raycast, or local Markdown files, use
+[Local Tool Ingestion](docs/conventions/local-tool-ingestion.md).
+
 Indexed paths:
 
 - `README.md`
@@ -202,21 +257,21 @@ repo:path:heading
 The FastMCP server exposes:
 
 - `search_memory`
-- `remember`
 - `related_repo_context`
 - `recent_project_memories`
 
-Read and write boundaries are separated:
+MCP is read-only by default. Registration is limited to GitHub Actions and the
+Python CLI, including Obsidian or Raycast wrappers.
+
+Readable tenants are configured in `mem0.policy.yml`:
 
 ```yaml
 read:
   - mimr-tech
-write:
-  - mimr-tech
 ```
 
-`remember` always writes to the configured write tenant. Search tools only read
-from configured readable tenants, even when a caller requests a narrower set.
+Search tools only read from configured readable tenants, even when a caller
+requests a narrower set.
 
 ## Cloudflare Setup
 
@@ -338,9 +393,23 @@ mise run check
 - Git and Markdown remain the canonical source.
 - mem0 can be rebuilt from source content.
 - MCP tools inject tenant filters automatically.
-- Write access is limited to one configured write tenant.
+- MCP is read-only; writes go through GitHub Actions or the Python CLI.
 - Service tokens are used for agent authentication through Cloudflare Access.
 - Secrets and personal data must not be emitted in logs.
+
+For local Claude Code, Cursor, Copilot, or Codex usage, pair this repository with
+`agent-privacy-guard` so retrieved mem0 context can be anonymized and routed
+before it is sent to an AI client or external model. `agent-privacy-guard` acts
+as an AI Agent Governance Gateway for prompt anonymization, MCP trust routing,
+and hook-based safety controls. mem0-local-platform stores and retrieves memory;
+`agent-privacy-guard` controls prompts and tool calls, including retrieved
+memory context, before they leave the local client path.
+
+That control does not normally apply to GitHub Actions sync jobs. GitHub Actions
+runs the reusable workflow directly on a GitHub runner. Protect Actions sync with
+Cloudflare Access service tokens, GitHub secrets, include/exclude path rules, and
+the intended tenant input. To apply `agent-privacy-guard` to GitHub Actions, the
+workflow itself would need to be explicitly routed through that gateway.
 
 ## Repository Indexing Lifecycle
 

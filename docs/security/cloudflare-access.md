@@ -39,6 +39,18 @@ from outside the compose network. Inside the compose network, services call
 the tunnel. Clients such as GitHub Actions do not use the tunnel token. They use
 the Access service token headers above.
 
+## Relationship With agent-privacy-guard
+
+For local Claude Code, Cursor, Copilot, or Codex usage, pair mem0-local-platform
+with `agent-privacy-guard` so retrieved mem0 context can be anonymized and routed
+before it is sent to an AI client or external model. `agent-privacy-guard`
+handles prompt anonymization, MCP trust routing, and hook-based safety controls.
+
+That control does not normally apply to GitHub Actions sync jobs. Actions run
+directly on GitHub runners and do not pass through local hooks or a local gateway.
+Protect Actions sync with Cloudflare Access service tokens, GitHub secrets,
+ingestion path rules, and tenant inputs.
+
 ## Human Login
 
 Human OAuth login is optional. It can be enabled for debugging or manual

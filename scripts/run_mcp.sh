@@ -19,7 +19,7 @@ cd "$repo_root"
 
 if [ -n "${MEM0_TENANT_POLICY_FILE:-}" ] && [ ! -f "$MEM0_TENANT_POLICY_FILE" ]; then
   echo "tenant policy file not found: $MEM0_TENANT_POLICY_FILE" >&2
-  echo "copy mem0.policy.example.yml to mem0.policy.yml and set read/write tenants" >&2
+  echo "copy mem0.policy.example.yml to mem0.policy.yml and set readable tenants" >&2
   exit 2
 fi
 

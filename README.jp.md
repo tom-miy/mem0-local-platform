@@ -1,21 +1,73 @@
 # mem0-local-platform
 
-開発者向けのローカル AI メモリ基盤です。
+このリポジトリは、Codex、Claude、ローカルエージェントが
+開発作業中に必要な文脈を検索するための、ローカル運用前提の mem0 実行基盤です。
+mem0、FalkorDB、Qdrant、Ollama を自分の Docker 環境で動かすため、
+ローカルモデル構成では登録した知識を外部 AI SaaS に送らずに運用できます。
 
-このリポジトリは、自前で動かす mem0 環境、FalkorDB、Qdrant、
-Cloudflare Tunnel、MCP、GitHub Actions による自動同期をまとめます。
-試作用の RAG デモではなく、実際の AI 支援開発で使う知識基盤を目指します。
+できること:
 
-mem0 は正本ではありません。
+- GitHub に push された README、docs、ADR を自動で取り込む
+- 手元の Markdown、Obsidian ノート、Raycast のメモを Python CLI 経由で登録する
+- 登録した文脈を FalkorDB のグラフと Qdrant のベクトル検索インデックスに保存する
+- Codex、Claude、ローカルエージェントから MCP 経由で検索する
+- MCP 設定で、AI エージェントが参照してよい知識の範囲を指定する
 
-正本は次です。
+嬉しいこと:
 
-- Git リポジトリ
-- Markdown ドキュメント
-- ADR
-- Obsidian ノート
+- AI エージェントが、過去の判断、設計メモ、調査結果を毎回聞き返さなくなる
+- リポジトリをまたぐ知識を、作業中の文脈として引ける
+- 関係性は FalkorDB、意味検索は Qdrant に分けて扱える
+- 顧客や契約で隔離が必要な知識を、通常の mimr-tech 知識と混ぜずに扱える
+- ローカルモデル構成なら、社内メモや判断パターンを外部 AI SaaS に預けずに済む
+- mem0 側のデータを失っても、Git や Markdown から作り直せる
 
-mem0 は、意味検索用キャッシュ、AI メモリ索引、実行時コンテキスト層として扱います。
+これはチャットボットや試作用 RAG ではありません。
+複数リポジトリや Obsidian に散らばる開発知識を、AI エージェントが安全に再利用するための
+AI エージェント向け知識基盤です。
+
+Git リポジトリ、Markdown、ADR、Obsidian ノートを知識の保存場所として扱い、
+mem0 はそこから作る検索インデックスとして扱います。
+外部 LLM や外部 embedding provider を選ぶ場合は、その provider に送信される内容を
+別途レビューしてください。
+
+## 使用例
+
+設計メモをリポジトリに残す:
+
+1. `docs/e2e.md` や `adr/001-retry-policy.md` を更新します。
+2. GitHub に push します。
+3. 共通ワークフローが変更された Markdown だけを mem0 に反映します。
+4. Codex や Claude が MCP 経由で、過去の設計判断を検索できます。
+
+作業中の短いメモをすぐ登録する:
+
+```bash
+uv run remember-to-mem0 \
+  --tenant mimr-tech \
+  --source obsidian \
+  --type note \
+  --tag debugging \
+  --file "$HOME/Obsidian/Vault/ai-workflows/e2e-debugging.md"
+```
+
+AI エージェントから検索する:
+
+```text
+search_memory("E2E 失敗時に trace.zip をどう扱うか")
+```
+
+顧客案件の知識を分ける:
+
+```yaml
+read:
+  - mimr-tech
+  - client-acme
+```
+
+この設定では、AI エージェントは `mimr-tech` と `client-acme` を参照できます。
+顧客案件の内容を新しく記録する場合は、GitHub Actions の `tenant` input または
+Python CLI の `--tenant client-acme` で登録先を指定します。
 
 ## アーキテクチャ
 
@@ -147,8 +199,8 @@ gh secret set MEM0_CLOUDFLARE_ACCESS_CLIENT_ID \
   --body "..."
 ```
 
-Raycast などローカルツールから短いメモを入れる場合は
-[Raycast などローカルツールからの取り込み](docs/conventions/local-tool-ingestion.jp.md)
+Obsidian、Raycast、手元の Markdown から短いメモを入れる場合は
+[ローカルツールからの取り込み](docs/conventions/local-tool-ingestion.jp.md)
 を見てください。
 
 ## 共通ワークフロー
@@ -224,21 +276,19 @@ repo:path:heading
 FastMCP サーバーは次のツールを提供します。
 
 - `search_memory`
-- `remember`
 - `related_repo_context`
 - `recent_project_memories`
 
-読み取りと書き込みは分離します。
+MCP はデフォルトで読み取り専用です。
+登録は GitHub Actions、Python CLI、Obsidian や Raycast からの Python CLI 呼び出しに限定します。
+
+読み取り可能テナントは `mem0.policy.yml` に置きます。
 
 ```yaml
 read:
   - mimr-tech
-
-write:
-  - mimr-tech
 ```
 
-`remember` は設定された書き込み先テナントにだけ書き込みます。
 検索ツールは、設定された読み取り可能テナントの範囲だけを読みます。
 
 クライアントへの設定方法は
@@ -260,7 +310,7 @@ cp mem0.policy.example.yml mem0.policy.yml
 `mem0.env` は Codex、Claude、Raycast などローカルクライアント用の設定です。
 Cloudflare Access の秘密値は MCP クライアント設定へ直接書かず、
 `mem0.env` に置きます。
-読み取り可能テナントと書き込み先テナントは `mem0.policy.yml` に置きます。
+読み取り可能テナントは `mem0.policy.yml` に置きます。
 
 ## Cloudflare 設定
 
@@ -391,15 +441,32 @@ data/ollama/
 - テナントは「読ませてよい範囲」を分ける単位です。
 - リポジトリ名だけでアクセス制御をしません。
 - リポジトリ名は検索用の情報として保存します。
-- Git、Markdown、ADR、Obsidian ノートを正本にします。
-- mem0 は検索を速くするための索引として扱います。
-- mem0 の内容は、必要になれば正本から作り直します。
+- 長く残す知識は Git、Markdown、ADR、Obsidian ノートに置きます。
+- mem0 は AI エージェントが検索しやすくするための索引として扱います。
+- mem0 の内容は、必要になれば Git や Markdown から作り直します。
 - MCP の検索ツールは、許可されたテナントだけを検索します。
-- MCP の書き込みツールは、設定された 1 つのテナントにだけ書き込みます。
+- MCP は読み取り専用です。登録は GitHub Actions または Python CLI から行います。
 - 外部からのアクセスは Cloudflare Access のサービストークンで認証します。
 - 秘密情報や個人情報をログに出してはいけません。
 
-つまり、mem0 に入っている情報そのものを正本として守るのではなく、
+ローカルの Claude Code、Cursor、Copilot、Codex から使う場合は、
+`agent-privacy-guard` と組み合わせると、mem0 から取り出した文脈を
+AI に渡す前に匿名化や trust routing をかけられます。
+`agent-privacy-guard` は AI Agent Governance Gateway として、prompt 匿名化、
+MCP trust routing、hook ベースの安全制御を提供します。
+mem0-local-platform は記憶の保存と検索を担当し、`agent-privacy-guard` は
+検索結果を含む prompt やツール呼び出しが AI クライアントや外部モデルへ渡る前段を
+制御します。
+
+ただし、GitHub Actions 上の同期ジョブには通常この制御は効きません。
+GitHub Actions は GitHub runner 上で共通ワークフローを直接実行するためです。
+Actions 側の保護は Cloudflare Access のサービストークン、GitHub secrets、
+取り込み対象パスの include/exclude、テナント指定で行います。
+GitHub Actions からも `agent-privacy-guard` を効かせたい場合は、ワークフロー自体を
+gateway 経由にする追加設計が必要です。
+
+つまり、mem0 に入っている情報だけを唯一の保存先にしません。
+長く残す内容は Git や Obsidian に戻し、mem0 では
 「誰がどのテナントを読めるか」と「どのテナントへ書けるか」を明確にします。
 
 例:
@@ -412,7 +479,7 @@ data/ollama/
 }
 ```
 
-この場合、`mimr-tech` が読み取りや書き込みの境界です。
+この場合、`mimr-tech` が読み取り境界です。
 `backend-testing-patterns` は検索で絞り込むための情報であり、境界ではありません。
 
 mimr-tech 管理下の作業例:
@@ -420,25 +487,19 @@ mimr-tech 管理下の作業例:
 ```yaml
 read:
   - mimr-tech
-
-write:
-  - mimr-tech
 ```
 
 この設定では、エージェントは `mimr-tech` だけを検索できます。
-新しく記録する内容も `mimr-tech` に入ります。
+新しく記録する内容は GitHub Actions または Python CLI から `mimr-tech` に入れます。
 
 顧客作業の例:
 
 ```yaml
 read:
   - client-18384728-acme
-
-write:
-  - client-18384728-acme
 ```
 
-この設定では、エージェントはその顧客用テナントだけを読み書きします。
+この設定では、エージェントはその顧客用テナントだけを読みます。
 別の顧客や `mimr-tech` には触れません。
 
 GitHub Actions から同期する例:

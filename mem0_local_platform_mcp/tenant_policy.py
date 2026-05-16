@@ -12,7 +12,6 @@ import yaml
 @dataclass(frozen=True)
 class TenantPolicy:
     read_tenants: tuple[str, ...]
-    write_tenant: str
 
     @classmethod
     def from_env(cls) -> "TenantPolicy":
@@ -21,12 +20,7 @@ class TenantPolicy:
             return cls.from_file(Path(policy_file))
 
         read_tenants = _csv(os.getenv("MEM0_READ_TENANTS", "mimr-tech"))
-        write_tenant = os.getenv("MEM0_WRITE_TENANT", "mimr-tech").strip()
-        if not write_tenant:
-            raise ValueError("MEM0_WRITE_TENANT must not be empty")
-        if write_tenant not in read_tenants:
-            read_tenants = (*read_tenants, write_tenant)
-        return cls(read_tenants=read_tenants, write_tenant=write_tenant)
+        return cls(read_tenants=read_tenants)
 
     @classmethod
     def from_file(cls, path: Path) -> "TenantPolicy":
@@ -35,14 +29,12 @@ class TenantPolicy:
             raise ValueError("tenant policy must be a YAML object")
 
         read_tenants = _list(data.get("read"), key="read")
-        write_tenants = _list(data.get("write"), key="write")
-        if len(write_tenants) != 1:
-            raise ValueError("tenant policy write must contain exactly one tenant")
-
-        write_tenant = write_tenants[0]
-        if write_tenant not in read_tenants:
-            read_tenants = (*read_tenants, write_tenant)
-        return cls(read_tenants=read_tenants, write_tenant=write_tenant)
+        write_value = data.get("write")
+        if write_value is not None:
+            write_tenants = _list(write_value, key="write")
+            if len(write_tenants) != 1:
+                raise ValueError("tenant policy write must contain at most one tenant")
+        return cls(read_tenants=read_tenants)
 
     def readable(self, requested: list[str] | None) -> tuple[str, ...]:
         if not requested:

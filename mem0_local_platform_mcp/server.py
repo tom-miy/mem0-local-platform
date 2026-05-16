@@ -24,12 +24,6 @@ def search_memory(query: str, tenants: list[str] | None = None, limit: int = 8) 
 
 
 @mcp.tool
-def remember(memory: str, metadata: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Write a memory only to the configured write tenant."""
-    return client.remember(memory, tenant=policy.write_tenant, metadata=metadata or {})
-
-
-@mcp.tool
 def related_repo_context(
     repo: str,
     query: str,
@@ -67,4 +61,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
