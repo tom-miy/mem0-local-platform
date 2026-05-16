@@ -71,9 +71,13 @@ infra-scripts
 
 MCP サーバーでは、読み取り可能テナントと書き込み先テナントを分けます。
 
-```text
-MEM0_READ_TENANTS=vault,work
-MEM0_WRITE_TENANT=work
+```yaml
+read:
+  - vault
+  - work
+
+write:
+  - work
 ```
 
 読み取り可能テナントは検索できる範囲です。
@@ -102,16 +106,24 @@ MEM0_WRITE_TENANT=work
 
 個人作業:
 
-```text
-MEM0_READ_TENANTS=vault,work
-MEM0_WRITE_TENANT=work
+```yaml
+read:
+  - vault
+  - work
+
+write:
+  - work
 ```
 
 顧客作業:
 
-```text
-MEM0_READ_TENANTS=work,client-18384728-acme
-MEM0_WRITE_TENANT=client-18384728-acme
+```yaml
+read:
+  - work
+  - client-18384728-acme
+
+write:
+  - client-18384728-acme
 ```
 
 顧客テナントで作業するときは、書き込み先テナントも顧客テナントに合わせます。

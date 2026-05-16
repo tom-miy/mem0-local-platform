@@ -14,13 +14,16 @@ mem0. Write operations use one configured write tenant.
 
 ## Read And Write Separation
 
-Configure read tenants and the write tenant with environment variables:
+Configure read tenants and the write tenant in `mem0.policy.yml`:
 
-```text
-MEM0_READ_TENANTS=vault,work
-MEM0_WRITE_TENANT=work
+```yaml
+read:
+  - vault
+  - work
+
+write:
+  - work
 ```
 
 The write tenant is automatically included in readable tenants so newly written
 context can be found by the same agent boundary.
-

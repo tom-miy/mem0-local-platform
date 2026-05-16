@@ -1,4 +1,6 @@
 .env
+mem0.env
+mem0.policy.yml
 .venv/
 __pycache__/
 *.py[cod]

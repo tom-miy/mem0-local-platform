@@ -175,10 +175,11 @@ The FastMCP server exposes:
 Read and write boundaries are separated:
 
 ```yaml
-read_tenants:
+read:
   - vault
   - work
-write_tenant: work
+write:
+  - work
 ```
 
 `remember` always writes to the configured write tenant. Search tools only read
@@ -231,6 +232,7 @@ Create a local env file:
 
 ```bash
 cp .env.example .env
+cp mem0.policy.example.yml mem0.policy.yml
 ```
 
 Start the runtime:
@@ -264,6 +266,21 @@ Run the MCP server locally:
 ```bash
 uv run mem0-local-mcp
 ```
+
+Print MCP client setup snippets:
+
+```bash
+./install.sh --target generic --transport stdio
+```
+
+Print Codex MCP setup:
+
+```bash
+cp mem0.env.example mem0.env
+./install.sh --target codex
+```
+
+Japanese MCP setup guide: [docs/conventions/mcp-setup.jp.md](docs/conventions/mcp-setup.jp.md)
 
 Run local validation:
 

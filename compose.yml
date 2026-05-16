@@ -42,6 +42,8 @@ services:
       - mem0
     env_file:
       - .env
+    volumes:
+      - ./mem0.policy.yml:/app/mem0.policy.yml:ro
     expose:
       - "8010"
 

@@ -1,4 +1,5 @@
 from pathlib import Path
+import tempfile
 import unittest
 
 from scripts.chunk_markdown import chunk_markdown, stable_chunk_id
@@ -81,6 +82,27 @@ Subscribe to the channel
         self.assertEqual(policy.readable(["work"]), ("work",))
         with self.assertRaises(ValueError):
             policy.readable(["client-secret"])
+
+    def test_tenant_policy_loads_read_write_yaml(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            policy_path = Path(tmp) / "mem0.policy.yml"
+            policy_path.write_text(
+                "read:\n  - vault\n  - client-tenant\nwrite:\n  - client-tenant\n",
+                encoding="utf-8",
+            )
+
+            policy = TenantPolicy.from_file(policy_path)
+
+        self.assertEqual(policy.read_tenants, ("vault", "client-tenant"))
+        self.assertEqual(policy.write_tenant, "client-tenant")
+
+    def test_tenant_policy_rejects_multiple_write_tenants(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            policy_path = Path(tmp) / "mem0.policy.yml"
+            policy_path.write_text("read:\n  - work\nwrite:\n  - work\n  - vault\n", encoding="utf-8")
+
+            with self.assertRaises(ValueError):
+                TenantPolicy.from_file(policy_path)
 
     def test_build_request_headers_includes_cloudflare_access(self) -> None:
         headers = build_request_headers(

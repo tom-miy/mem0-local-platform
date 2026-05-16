@@ -176,14 +176,37 @@ FastMCP サーバーは次のツールを提供します。
 読み取りと書き込みは分離します。
 
 ```yaml
-read_tenants:
+read:
   - vault
   - work
-write_tenant: work
+
+write:
+  - work
 ```
 
 `remember` は設定された書き込み先テナントにだけ書き込みます。
 検索ツールは、設定された読み取り可能テナントの範囲だけを読みます。
+
+クライアントへの設定方法は
+[MCP の設定](docs/conventions/mcp-setup.jp.md) を見てください。
+設定例を表示するには次を実行します。
+
+```bash
+./install.sh --target generic --transport stdio
+```
+
+Codex 用の設定例:
+
+```bash
+cp mem0.env.example mem0.env
+cp mem0.policy.example.yml mem0.policy.yml
+./install.sh --target codex
+```
+
+`mem0.env` は Codex、Claude、Raycast などローカルクライアント用の設定です。
+Cloudflare Access の秘密値は MCP クライアント設定へ直接書かず、
+`mem0.env` に置きます。
+読み取り可能テナントと書き込み先テナントは `mem0.policy.yml` に置きます。
 
 ## Cloudflare 設定
 
@@ -231,6 +254,7 @@ mise run setup
 
 ```bash
 cp .env.example .env
+cp mem0.policy.example.yml mem0.policy.yml
 ```
 
 Docker Compose でローカル環境を起動します。
@@ -326,9 +350,13 @@ data/mem0/
 
 個人作業の例:
 
-```text
-MEM0_READ_TENANTS=vault,work
-MEM0_WRITE_TENANT=work
+```yaml
+read:
+  - vault
+  - work
+
+write:
+  - work
 ```
 
 この設定では、エージェントは `vault` と `work` を検索できます。
@@ -336,9 +364,12 @@ MEM0_WRITE_TENANT=work
 
 顧客作業の例:
 
-```text
-MEM0_READ_TENANTS=client-18384728-acme
-MEM0_WRITE_TENANT=client-18384728-acme
+```yaml
+read:
+  - client-18384728-acme
+
+write:
+  - client-18384728-acme
 ```
 
 この設定では、エージェントはその顧客用テナントだけを読み書きします。

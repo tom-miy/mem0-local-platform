@@ -24,7 +24,8 @@ MEM0_API_URL=http://mem0:8000
 ```
 
 Raycast や通常のターミナルから使う場合は、Cloudflare Access の
-サービストークンも設定します。
+サービストークンも設定します。値は `mem0.env` に置くか、Raycast の
+環境変数として設定します。
 
 ```text
 CLOUDFLARE_ACCESS_CLIENT_ID=...
@@ -32,7 +33,13 @@ CLOUDFLARE_ACCESS_CLIENT_SECRET=...
 ```
 
 `CLOUDFLARE_TUNNEL_TOKEN` は使いません。
-これは platform 側の `cloudflared` サービスが使うトークンです。
+これは実行基盤側の `cloudflared` サービスが使うトークンです。
+
+`mem0.env` を使う場合:
+
+```bash
+cp mem0.env.example mem0.env
+```
 
 ## 直接実行
 
