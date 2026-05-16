@@ -1,19 +1,19 @@
-# tenant 運用ルール
+# テナント運用ルール
 
-tenant は mem0-local-platform におけるセキュリティ境界です。
+テナントは mem0-local-platform におけるセキュリティ境界です。
 
-tenant は repository grouping ではありません。
-repo 名は metadata として保存します。
+テナントはリポジトリの分類名ではありません。
+リポジトリ名はメタデータとして保存します。
 
 ## 基本ルール
 
-- tenant は読み取り境界と書き込み境界を表します。
-- repository ごとに tenant を作りません。
-- tenant 名は人間が運用判断できる粒度にします。
-- client data や契約境界が違う場合は tenant を分けます。
-- 同じ会社や個人の作業領域で、秘密境界が同じなら tenant を分けません。
+- テナントは読み取り境界と書き込み境界を表します。
+- リポジトリごとにテナントを作りません。
+- テナント名は人間が運用判断できる粒度にします。
+- 顧客データや契約上の境界が違う場合はテナントを分けます。
+- 同じ会社や個人の作業領域で、秘密境界が同じならテナントを分けません。
 
-## 推奨 tenant
+## 推奨テナント
 
 ```text
 vault
@@ -31,9 +31,9 @@ upwork-18384728-acme
 agency-991-example
 ```
 
-## 避ける tenant
+## 避けるテナント
 
-repo ごとの tenant:
+リポジトリごとのテナント:
 
 ```text
 backend-testing-patterns
@@ -45,14 +45,14 @@ infra-scripts
 
 理由:
 
-- tenant が増えすぎる
-- read/write policy が複雑になる
-- cross-repo context が使いにくくなる
-- repo rename と security boundary が混ざる
+- テナントが増えすぎる
+- 読み取りと書き込みの方針が複雑になる
+- 複数リポジトリをまたぐ文脈を使いにくくなる
+- リポジトリ名変更とセキュリティ境界が混ざる
 
-## metadata schema
+## メタデータ
 
-repository は metadata に入れます。
+リポジトリはメタデータに入れます。
 
 ```json
 {
@@ -64,39 +64,39 @@ repository は metadata に入れます。
 }
 ```
 
-`tenant` は isolation boundary です。
-`repo` と `path` は retrieval metadata です。
+`tenant` は分離境界です。
+`repo` と `path` は検索用メタデータです。
 
-## read/write policy
+## 読み取りと書き込みの方針
 
-MCP runtime は readable tenants と write tenant を分けます。
+MCP 実行基盤では、読み取り可能テナントと書き込み先テナントを分けます。
 
 ```text
 MEM0_READ_TENANTS=vault,work
 MEM0_WRITE_TENANT=work
 ```
 
-readable tenants は検索できる範囲です。
-write tenant は `remember` が書き込む先です。
+読み取り可能テナントは検索できる範囲です。
+書き込み先テナントは `remember` が書き込む先です。
 
-複数 tenant を読めても、書き込み先は 1 つに固定します。
-これにより、agent が誤って別 tenant に記録する事故を避けます。
+複数テナントを読めても、書き込み先は 1 つに固定します。
+これにより、エージェントが誤って別テナントに記録する事故を避けます。
 
-## tenant を増やす基準
+## テナントを増やす基準
 
-tenant を増やしてよい場合:
+テナントを増やしてよい場合:
 
-- client / customer が違う
+- 顧客が違う
 - 契約上の隔離が必要
-- 個人 vault と work を分けたい
-- agent に読ませてよい範囲が明確に違う
+- 個人用の `vault` と作業用の `work` を分けたい
+- エージェントに読ませてよい範囲が明確に違う
 
-tenant を増やさない場合:
+テナントを増やさない場合:
 
-- repository が違うだけ
-- docs の種類が違うだけ
-- language / framework が違うだけ
-- team 内の同じ作業領域で使うだけ
+- リポジトリが違うだけ
+- ドキュメントの種類が違うだけ
+- 言語やフレームワークが違うだけ
+- 同じ作業領域で使うだけ
 
 ## 運用例
 
@@ -107,23 +107,23 @@ MEM0_READ_TENANTS=vault,work
 MEM0_WRITE_TENANT=work
 ```
 
-client work:
+顧客作業:
 
 ```text
 MEM0_READ_TENANTS=work,client-18384728-acme
 MEM0_WRITE_TENANT=client-18384728-acme
 ```
 
-client tenant で作業するときは、write tenant も client tenant に合わせます。
-work tenant へ client 情報を書かないためです。
+顧客テナントで作業するときは、書き込み先テナントも顧客テナントに合わせます。
+作業用テナントへ顧客情報を書かないためです。
 
 ## レビュー観点
 
-tenant 設定を変えるときは次を確認します。
+テナント設定を変えるときは次を確認します。
 
-- その tenant は本当に security boundary か
-- repo 名や project 名を tenant にしていないか
-- write tenant が現在の作業対象と一致しているか
-- readable tenants に不要な client tenant が入っていないか
+- そのテナントは本当にセキュリティ境界か
+- リポジトリ名やプロジェクト名をテナントにしていないか
+- 書き込み先テナントが現在の作業対象と一致しているか
+- 読み取り可能テナントに不要な顧客テナントが入っていないか
 - GitHub Actions の `tenant` input が正しいか
 

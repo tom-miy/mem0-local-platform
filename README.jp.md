@@ -2,10 +2,9 @@
 
 開発者向けのローカル AI メモリ基盤です。
 
-このリポジトリは、self-hosted mem0 runtime、FalkorDB、Qdrant、
+このリポジトリは、自前運用の mem0 実行基盤、FalkorDB、Qdrant、
 Cloudflare Tunnel、MCP、GitHub Actions による自動同期をまとめます。
-目的は toy RAG demo ではなく、実際の AI-assisted engineering workflow で
-使える Developer Knowledge Infrastructure を作ることです。
+試作用の RAG デモではなく、実際の AI 支援開発で使う知識基盤を目指します。
 
 mem0 は正本ではありません。
 
@@ -14,51 +13,50 @@ mem0 は正本ではありません。
 - Git リポジトリ
 - Markdown ドキュメント
 - ADR
-- Obsidian notes
+- Obsidian ノート
 
-mem0 は semantic retrieval cache、AI memory index、runtime context layer
-として扱います。
+mem0 は、意味検索用キャッシュ、AI メモリ索引、実行時コンテキスト層として扱います。
 
 ## アーキテクチャ
 
 ```text
 Git repository
   -> GitHub push
-  -> reusable mem0 sync workflow
-  -> ingest-to-mem0 CLI
+  -> 再利用可能な mem0 同期ワークフロー
+  -> mem0 取り込みコマンド
   -> Cloudflare Tunnel
   -> mem0
-     -> FalkorDB graph memory
-     -> Qdrant vector retrieval
+     -> FalkorDB グラフメモリ
+     -> Qdrant 意味ベクトル検索
   -> MCP
-  -> Codex / Claude / local agents
+  -> Codex / Claude / ローカルエージェント
 ```
 
 ## メモリ同期の流れ
 
 1. Git リポジトリで Markdown や ADR を更新します。
-2. GitHub push が thin caller workflow を起動します。
-3. caller workflow は共通 workflow を呼び出します。
-4. 共通 workflow が `changed` または `full` の file list を作ります。
-5. `scripts/ingest_repo.py` が Markdown を heading ごとに chunk します。
-6. chunk は stable ID で mem0 に upsert されます。
-7. agent は MCP 経由で tenant filter 付きの検索を行います。
+2. GitHub push が薄い呼び出し側ワークフローを起動します。
+3. 呼び出し側ワークフローは共通ワークフローを呼び出します。
+4. 共通ワークフローが `changed` または `full` の対象ファイル一覧を作ります。
+5. `scripts/ingest_repo.py` が Markdown を見出しごとに分割します。
+6. 分割した内容は安定 ID で mem0 に更新または追加されます。
+7. エージェントは MCP 経由でテナント絞り込み付きの検索を行います。
 
-## tenant 戦略
+## テナント戦略
 
-tenant はセキュリティ境界です。
+テナントはセキュリティ境界です。
 
-リポジトリごとに tenant を作ってはいけません。repo 名は metadata として
+リポジトリごとにテナントを作ってはいけません。リポジトリ名はメタデータとして
 保存します。
 
-推奨 tenant:
+推奨テナント:
 
 - `vault`
 - `work`
 - `client-*`
 - `agency-*`
 
-metadata 例:
+メタデータ例:
 
 ```json
 {
@@ -68,14 +66,14 @@ metadata 例:
 }
 ```
 
-repo ごとに tenant を作ると、tenant が増えすぎて運用と監査が難しくなります。
-詳細は [tenant 運用ルール](docs/security/tenant-operations.jp.md) を見てください。
+リポジトリごとにテナントを作ると、テナントが増えすぎて運用と監査が難しくなります。
+詳細は [テナント運用ルール](docs/security/tenant-operations.jp.md) を見てください。
 
 ## 別リポジトリへの追加
 
-別リポジトリ側には thin caller workflow だけを追加します。
+別リポジトリ側には、薄い呼び出し側ワークフローだけを追加します。
 
-取り込み CLI、差分判定、除外ルールを各リポジトリへコピーしません。
+取り込みコマンド、差分判定、除外ルールを各リポジトリへコピーしません。
 
 ```yaml
 name: Sync Repository Memory
@@ -107,14 +105,14 @@ jobs:
 ```
 
 通常の push では `changed` を使います。
-初回投入、除外ルール変更後、mem0 state の再構築後は `full` を使います。
+初回投入、除外ルール変更後、mem0 の状態を再構築した後は `full` を使います。
 
 詳細は [別リポジトリへの導入手順](docs/conventions/adopting-repository.jp.md)
 を見てください。
 
-## 共通 workflow
+## 共通ワークフロー
 
-共通 workflow はここにあります。
+共通ワークフローはここにあります。
 
 ```text
 .github/workflows/reusable-sync.yml
@@ -122,22 +120,22 @@ jobs:
 
 これは `workflow_call` 専用です。
 
-各リポジトリに workflow logic をコピーせず、`uses:` でこの workflow を
+各リポジトリにワークフローの処理をコピーせず、`uses:` でこのワークフローを
 呼び出します。
 
-主な inputs:
+主な入力:
 
 - `sync_mode`: `changed` または `full`
-- `tenant`: 書き込み先 tenant
-- `repo`: metadata として保存する repo 名
-- `include_paths`: index 対象 path
-- `exclude_paths`: 除外 path
+- `tenant`: 書き込み先テナント
+- `repo`: メタデータとして保存するリポジトリ名
+- `include_paths`: 索引対象パス
+- `exclude_paths`: 除外パス
 
 `exclude_paths` は `include_paths` より先に評価されます。
 
-## Markdown indexing
+## Markdown の索引作成
 
-デフォルトでは次を index します。
+デフォルトでは次を索引します。
 
 - `README.md`
 - `README*.md`
@@ -153,25 +151,25 @@ jobs:
 - `coverage/**`
 - `build/**`
 - `__pycache__/**`
-- lock files
+- ロックファイル
 
-chunk は Markdown heading ごとに作られます。
-stable ID は次の値から SHA-256 で作ります。
+取り込み内容は Markdown の見出しごとに分割されます。
+安定 ID は次の値から SHA-256 で作ります。
 
 ```text
 repo:path:heading
 ```
 
-## MCP integration
+## MCP 連携
 
-FastMCP server は次の tools を提供します。
+FastMCP サーバーは次のツールを提供します。
 
 - `search_memory`
 - `remember`
 - `related_repo_context`
 - `recent_project_memories`
 
-read/write は分離します。
+読み取りと書き込みは分離します。
 
 ```yaml
 read_tenants:
@@ -180,45 +178,44 @@ read_tenants:
 write_tenant: work
 ```
 
-`remember` は configured write tenant にだけ書き込みます。
-検索 tools は configured readable tenants の範囲だけを読みます。
+`remember` は設定された書き込み先テナントにだけ書き込みます。
+検索ツールは、設定された読み取り可能テナントの範囲だけを読みます。
 
-## Cloudflare setup
+## Cloudflare 設定
 
-外部 agent や GitHub Actions は Cloudflare Tunnel と Cloudflare Access
-Service Token 経由でアクセスします。
+外部エージェントや GitHub Actions は、Cloudflare Tunnel と Cloudflare Access
+のサービストークン経由でアクセスします。
 
-compose stack には `cloudflared` service が含まれます。
-外部公開は direct port ではなく Tunnel 経由を前提にします。
+Compose スタックには `cloudflared` サービスが含まれます。
+外部公開は直接ポートではなく、Tunnel 経由を前提にします。
 
-Tunnel routing 例:
+Tunnel ルーティング例:
 
 ```text
 mem0-api.example.com -> http://mem0:8000
 mem0-mcp.example.com -> http://mcp:8010
 ```
 
-GitHub Actions の `MEM0_API_URL` には Cloudflare-protected hostname を
-設定します。compose 内部の `http://mem0:8000` は外部から使いません。
+GitHub Actions の `MEM0_API_URL` には、Cloudflare Access で保護された
+ホスト名を設定します。Compose 内部の `http://mem0:8000` は外部から使いません。
 
-GitHub Actions は Cloudflare Access Service Token で認証します。
-caller workflow には `CLOUDFLARE_ACCESS_CLIENT_ID` と
+GitHub Actions は Cloudflare Access のサービストークンで認証します。
+呼び出し側ワークフローには `CLOUDFLARE_ACCESS_CLIENT_ID` と
 `CLOUDFLARE_ACCESS_CLIENT_SECRET` を渡します。
-`CLOUDFLARE_TUNNEL_TOKEN` は platform runtime の `cloudflared` service
-だけが使います。
+`CLOUDFLARE_TUNNEL_TOKEN` は、プラットフォーム側の `cloudflared` サービスだけが使います。
 
-## backend の責務
+## バックエンドの責務
 
-FalkorDB は graph memory と関係性を扱います。
+FalkorDB はグラフメモリと関係性を扱います。
 
-Qdrant は semantic vector retrieval を扱います。
+Qdrant は意味ベクトル検索を扱います。
 
-このリポジトリの `mem0` API service は mem0 OSS library を呼び出し、
+このリポジトリの `mem0` API サービスは mem0 OSS ライブラリを呼び出し、
 FalkorDB と Qdrant に接続します。
 
-## local run
+## ローカル実行
 
-toolchain は mise で管理します。
+ツールチェーンは mise で管理します。
 
 ```bash
 mise trust .
@@ -232,28 +229,28 @@ mise run setup
 cp .env.example .env
 ```
 
-runtime を起動します。
+実行基盤を起動します。
 
 ```bash
 mise run up
 ```
 
-dry-run ingestion:
+取り込みのドライラン:
 
 ```bash
 mise run ingest-dry-run
 ```
 
-local validation:
+ローカル検証:
 
 ```bash
 mise run check
 ```
 
-## backup
+## バックアップ
 
-backend state は `data/` に bind mount します。
-Docker named volume は使いません。
+バックエンド状態は `data/` にバインドマウントします。
+Docker 名前付きボリュームは使いません。
 
 ```text
 data/falkordb/
@@ -261,17 +258,69 @@ data/qdrant/
 data/mem0/
 ```
 
-通常の filesystem backup tool で `data/` を backup できます。
+通常のファイルシステム用バックアップツールで `data/` をバックアップできます。
 
-詳細は [backup docs](docs/operations/backup.md) を見てください。
+詳細は [バックアップ手順](docs/operations/backup.md) を見てください。
 
-## security model
+## セキュリティモデル
 
-- tenant は isolation boundary です。
-- repo 名は authorization boundary ではなく metadata です。
-- Git / Markdown / ADR / Obsidian notes が正本です。
-- mem0 は source から rebuild 可能な retrieval infrastructure です。
-- MCP tools は tenant filters を自動注入します。
-- write は configured write tenant に限定します。
-- Service Token は Cloudflare Access で agent/tool 認証に使います。
-- secrets や個人情報を log に出してはいけません。
+このリポジトリでは、メモリを次のルールで扱います。
+
+- テナントは「読ませてよい範囲」を分ける単位です。
+- リポジトリ名だけでアクセス制御をしません。
+- リポジトリ名は検索用の情報として保存します。
+- Git、Markdown、ADR、Obsidian ノートを正本にします。
+- mem0 は検索を速くするための索引として扱います。
+- mem0 の内容は、必要になれば正本から作り直します。
+- MCP の検索ツールは、許可されたテナントだけを検索します。
+- MCP の書き込みツールは、設定された 1 つのテナントにだけ書き込みます。
+- 外部からのアクセスは Cloudflare Access のサービストークンで認証します。
+- 秘密情報や個人情報をログに出してはいけません。
+
+つまり、mem0 に入っている情報そのものを正本として守るのではなく、
+「誰がどのテナントを読めるか」と「どのテナントへ書けるか」を明確にします。
+
+例:
+
+```json
+{
+  "tenant": "work",
+  "repo": "backend-testing-patterns",
+  "path": "docs/e2e.md"
+}
+```
+
+この場合、`work` が読み取りや書き込みの境界です。
+`backend-testing-patterns` は検索で絞り込むための情報であり、境界ではありません。
+
+個人作業の例:
+
+```text
+MEM0_READ_TENANTS=vault,work
+MEM0_WRITE_TENANT=work
+```
+
+この設定では、エージェントは `vault` と `work` を検索できます。
+新しく記録する内容は `work` にだけ入ります。
+
+顧客作業の例:
+
+```text
+MEM0_READ_TENANTS=client-18384728-acme
+MEM0_WRITE_TENANT=client-18384728-acme
+```
+
+この設定では、エージェントはその顧客用テナントだけを読み書きします。
+別の顧客や通常作業用の `work` には触れません。
+
+GitHub Actions から同期する例:
+
+```yaml
+with:
+  tenant: client-18384728-acme
+  repo: backend-testing-patterns
+```
+
+この workflow は、`backend-testing-patterns` の Markdown を
+`client-18384728-acme` テナントへ記録します。
+repo 名は metadata として残るため、後から repo 単位で検索できます。
