@@ -298,6 +298,12 @@ Docker Compose でローカル環境を起動します。
 mise run up
 ```
 
+compose の `ollama` サービスへデフォルトモデルを取得します。
+
+```bash
+mise run ollama-pull
+```
+
 取り込みのドライラン:
 
 ```bash
@@ -349,6 +355,7 @@ Docker 名前付きボリュームは使いません。
 data/falkordb/
 data/qdrant/
 data/mem0/
+data/ollama/
 ```
 
 通常のファイルシステム用バックアップツールで `data/` をバックアップできます。

@@ -253,6 +253,12 @@ Start the runtime:
 mise run up
 ```
 
+Pull the default Ollama models into the compose `ollama` service:
+
+```bash
+mise run ollama-pull
+```
+
 The `mem0` service is built from this repository. It wraps the mem0 OSS Python
 library instead of depending on an unverified external image.
 
@@ -262,6 +268,7 @@ Persistent backend data is stored under `data/` with bind mounts:
 data/falkordb/
 data/qdrant/
 data/mem0/
+data/ollama/
 ```
 
 Back up `data/` with normal filesystem backup tools. The compose file does not

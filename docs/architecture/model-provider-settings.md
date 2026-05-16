@@ -51,9 +51,9 @@ Confirm the models are available:
 ollama list
 ```
 
-If Ollama runs on the host and mem0 runs in Docker Compose, set
-`OLLAMA_BASE_URL=http://host.docker.internal:11434`. If Ollama runs as a compose
-service, use `OLLAMA_BASE_URL=http://ollama:11434`.
+The default compose runtime includes an `ollama` service, so
+`OLLAMA_BASE_URL=http://ollama:11434` works inside compose. If Ollama runs on the
+host instead, set `OLLAMA_BASE_URL=http://host.docker.internal:11434`.
 
 If you use the manual Ollama install instead of the install script, create the
 systemd service described in the official Linux documentation before running
@@ -70,6 +70,12 @@ MEM0_EMBEDDER_PROVIDER=ollama
 MEM0_EMBEDDER_MODEL=nomic-embed-text:latest
 MEM0_EMBEDDING_DIMS=768
 OLLAMA_BASE_URL=http://ollama:11434
+```
+
+Pull the default models after starting compose:
+
+```bash
+mise run ollama-pull
 ```
 
 `nomic-embed-text` uses 768 dimensions. Keep `MEM0_EMBEDDING_DIMS=768` unless

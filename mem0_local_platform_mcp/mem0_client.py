@@ -7,12 +7,18 @@ from typing import Any
 
 import httpx
 
+from scripts.ingest_repo import build_request_headers
+
 
 class Mem0Client:
     def __init__(self, api_url: str | None = None, api_key: str | None = None) -> None:
         self.api_url = (api_url or os.getenv("MEM0_API_URL", "http://localhost:8000")).rstrip("/")
         key = api_key if api_key is not None else os.getenv("MEM0_API_KEY", "")
-        self.headers = {"Authorization": f"Bearer {key}"} if key else {}
+        self.headers = build_request_headers(
+            api_key=key,
+            cloudflare_access_client_id=os.getenv("CLOUDFLARE_ACCESS_CLIENT_ID", ""),
+            cloudflare_access_client_secret=os.getenv("CLOUDFLARE_ACCESS_CLIENT_SECRET", ""),
+        )
         self.add_path = os.getenv("MEM0_ADD_PATH", "/add")
         self.search_path = os.getenv("MEM0_SEARCH_PATH", "/search")
 

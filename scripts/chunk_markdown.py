@@ -56,19 +56,23 @@ def chunk_markdown(
         sections.append((current_heading, current_lines))
 
     chunks: list[MarkdownChunk] = []
+    heading_counts: dict[str, int] = {}
     for heading_path, lines in sections:
         content = "\n".join(lines).strip()
         if not content:
             continue
 
         heading = " > ".join(heading_path)
-        stable_id = stable_chunk_id(repo=repo, path=path, heading=heading)
+        occurrence = heading_counts.get(heading, 0) + 1
+        heading_counts[heading] = occurrence
+        stable_id = stable_chunk_id(repo=repo, path=path, heading=heading, occurrence=occurrence)
         metadata = {
             "tenant": tenant,
             "repo": repo,
             "path": path,
             "type": infer_document_type(path),
             "heading": heading,
+            "heading_occurrence": occurrence,
             "heading_path": list(heading_path),
             "tags": list(tags),
             "source": "github",
@@ -88,8 +92,9 @@ def chunk_markdown(
     return chunks
 
 
-def stable_chunk_id(*, repo: str, path: str, heading: str) -> str:
-    raw = f"{repo}:{path}:{heading}".encode()
+def stable_chunk_id(*, repo: str, path: str, heading: str, occurrence: int = 1) -> str:
+    suffix = "" if occurrence <= 1 else f":{occurrence}"
+    raw = f"{repo}:{path}:{heading}{suffix}".encode()
     return sha256(raw).hexdigest()
 
 
@@ -102,4 +107,3 @@ def infer_document_type(path: str) -> str:
     if lower.startswith("docs/") or "/docs/" in lower:
         return "doc"
     return "markdown"
-

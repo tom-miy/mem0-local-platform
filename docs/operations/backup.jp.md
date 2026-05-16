@@ -6,6 +6,7 @@
 data/falkordb/
 data/qdrant/
 data/mem0/
+data/ollama/
 ```
 
 Compose ファイルでは、バックエンド状態に Docker named volume を使いません。

@@ -6,6 +6,7 @@ State is stored in repository-local bind mounts under `data/`.
 data/falkordb/
 data/qdrant/
 data/mem0/
+data/ollama/
 ```
 
 The compose file intentionally avoids Docker named volumes for backend state.

@@ -14,6 +14,7 @@ from scripts.ingest_repo import (
     should_index,
 )
 from scripts.sync_path_rules import load_sync_config
+from mem0_local_platform_mcp.mem0_client import Mem0Client
 from mem0_local_platform_mcp.tenant_policy import TenantPolicy
 
 
@@ -52,6 +53,19 @@ Subscribe to the channel
             stable_chunk_id(repo="repo-a", path="README.md", heading="Document"),
             stable_chunk_id(repo="repo-b", path="README.md", heading="Document"),
         )
+
+    def test_duplicate_headings_get_distinct_stable_ids(self) -> None:
+        chunks = chunk_markdown(
+            "# Notes\nFirst\n\n# Notes\nSecond",
+            tenant="mimr-tech",
+            repo="example",
+            path="docs/notes.md",
+        )
+
+        self.assertEqual(len(chunks), 2)
+        self.assertNotEqual(chunks[0].stable_id, chunks[1].stable_id)
+        self.assertEqual(chunks[0].metadata["heading_occurrence"], 1)
+        self.assertEqual(chunks[1].metadata["heading_occurrence"], 2)
 
     def test_should_index_markdown_first_paths(self) -> None:
         self.assertTrue(should_index(Path("README.md")))
@@ -202,6 +216,22 @@ Subscribe to the channel
                 cloudflare_access_client_secret="",
             )
 
+    def test_mcp_client_includes_cloudflare_access_headers(self) -> None:
+        with patch.dict(
+            "os.environ",
+            {
+                "MEM0_API_URL": "https://mem0-api.example.com",
+                "MEM0_API_KEY": "",
+                "CLOUDFLARE_ACCESS_CLIENT_ID": "client-id",
+                "CLOUDFLARE_ACCESS_CLIENT_SECRET": "client-secret",
+            },
+            clear=True,
+        ):
+            client = Mem0Client()
+
+        self.assertEqual(client.headers["CF-Access-Client-Id"], "client-id")
+        self.assertEqual(client.headers["CF-Access-Client-Secret"], "client-secret")
+
     def test_model_provider_docs_config_json_examples_are_valid(self) -> None:
         docs = (
             Path("docs/architecture/model-provider-settings.md"),
@@ -241,9 +271,26 @@ Subscribe to the channel
 
         self.assertEqual(missing, [])
 
+    def test_japanese_docs_have_english_sources(self) -> None:
+        japanese_files = [
+            path
+            for path in Path(".").rglob("*.jp.md")
+            if ".venv" not in path.parts and ".git" not in path.parts
+        ]
+
+        missing = [path.as_posix() for path in japanese_files if not english_counterpart(path).exists()]
+
+        self.assertEqual(missing, [])
+
 
 def japanese_counterpart(path: Path) -> Path:
     return path.with_name(f"{path.stem}.jp.md")
+
+
+def english_counterpart(path: Path) -> Path:
+    if not path.name.endswith(".jp.md"):
+        raise ValueError(f"not a Japanese Markdown file: {path}")
+    return path.with_name(path.name.removesuffix(".jp.md") + ".md")
 
 
 if __name__ == "__main__":

@@ -51,10 +51,10 @@ ollama pull qwen3:4b
 ollama list
 ```
 
-Ollama をホスト側で動かし、mem0 を Docker Compose で動かす場合は
+デフォルトの compose 実行環境には `ollama` サービスが含まれるため、
+compose 内では `OLLAMA_BASE_URL=http://ollama:11434` を使えます。
+Ollama をホスト側で動かす場合は
 `OLLAMA_BASE_URL=http://host.docker.internal:11434` を使います。
-Ollama も Compose サービスとして動かす場合は
-`OLLAMA_BASE_URL=http://ollama:11434` を使います。
 
 インストールスクリプトではなく手動インストールを使う場合は、
 公式 Linux ドキュメントにある systemd サービスを作ってから
@@ -71,6 +71,12 @@ MEM0_EMBEDDER_PROVIDER=ollama
 MEM0_EMBEDDER_MODEL=nomic-embed-text:latest
 MEM0_EMBEDDING_DIMS=768
 OLLAMA_BASE_URL=http://ollama:11434
+```
+
+compose 起動後にデフォルトモデルを取得します。
+
+```bash
+mise run ollama-pull
 ```
 
 `nomic-embed-text` は 768 次元です。

@@ -60,7 +60,14 @@ run = """
 
 [tasks.check]
 description = "Run local validation checks."
-depends = ["compile", "test", "workflow-check", "ingest-dry-run"]
+depends = ["compile", "test", "workflow-check", "sync-path-rules", "ingest-dry-run"]
+
+[tasks.ollama-pull]
+description = "Pull default Ollama models into the compose ollama service."
+run = """
+docker compose -f compose.yml exec ollama ollama pull nomic-embed-text:latest
+docker compose -f compose.yml exec ollama ollama pull qwen3:4b
+"""
 
 [tasks.clean]
 description = "Remove local test and validation artifacts except data/."
