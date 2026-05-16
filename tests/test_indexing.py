@@ -1,6 +1,9 @@
 from pathlib import Path
+import json
+import re
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from scripts.chunk_markdown import chunk_markdown, stable_chunk_id
 from scripts.cleanup_text import cleanup_text
@@ -104,6 +107,42 @@ Subscribe to the channel
             with self.assertRaises(ValueError):
                 TenantPolicy.from_file(policy_path)
 
+    def test_tenant_policy_from_env_prefers_policy_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            policy_path = Path(tmp) / "mem0.policy.yml"
+            policy_path.write_text(
+                "read:\n  - vault\n  - client-tenant\nwrite:\n  - client-tenant\n",
+                encoding="utf-8",
+            )
+
+            with patch.dict(
+                "os.environ",
+                {
+                    "MEM0_TENANT_POLICY_FILE": str(policy_path),
+                    "MEM0_READ_TENANTS": "work",
+                    "MEM0_WRITE_TENANT": "work",
+                },
+                clear=True,
+            ):
+                policy = TenantPolicy.from_env()
+
+        self.assertEqual(policy.read_tenants, ("vault", "client-tenant"))
+        self.assertEqual(policy.write_tenant, "client-tenant")
+
+    def test_tenant_policy_from_env_fallback_adds_write_tenant_to_readable(self) -> None:
+        with patch.dict(
+            "os.environ",
+            {
+                "MEM0_READ_TENANTS": "vault",
+                "MEM0_WRITE_TENANT": "work",
+            },
+            clear=True,
+        ):
+            policy = TenantPolicy.from_env()
+
+        self.assertEqual(policy.read_tenants, ("vault", "work"))
+        self.assertEqual(policy.write_tenant, "work")
+
     def test_build_request_headers_includes_cloudflare_access(self) -> None:
         headers = build_request_headers(
             api_key="",
@@ -121,6 +160,31 @@ Subscribe to the channel
                 cloudflare_access_client_id="client-id",
                 cloudflare_access_client_secret="",
             )
+
+    def test_model_provider_docs_config_json_examples_are_valid(self) -> None:
+        docs = (
+            Path("docs/architecture/model-provider-settings.md"),
+            Path("docs/architecture/model-provider-settings.jp.md"),
+        )
+
+        examples: list[dict[str, object]] = []
+        for doc in docs:
+            text = doc.read_text(encoding="utf-8")
+            matches = re.findall(r"MEM0_CONFIG_JSON='(\{.*?\})'", text, flags=re.DOTALL)
+            self.assertGreaterEqual(len(matches), 3, f"expected MEM0_CONFIG_JSON examples in {doc}")
+            examples.extend(json.loads(match) for match in matches)
+
+        for example in examples:
+            self.assertIn("vector_store", example)
+            self.assertIn("graph_store", example)
+            self.assertIn("llm", example)
+            self.assertIn("embedder", example)
+
+            vector_store = example["vector_store"]
+            self.assertIsInstance(vector_store, dict)
+            vector_config = vector_store["config"]  # type: ignore[index]
+            self.assertEqual(vector_config["host"], "qdrant")  # type: ignore[index]
+            self.assertEqual(vector_config["embedding_model_dims"], 768)  # type: ignore[index]
 
 
 if __name__ == "__main__":
