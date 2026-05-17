@@ -17,10 +17,26 @@ client = Mem0Client()
 
 
 @mcp.tool
-def search_memory(query: str, tenants: list[str] | None = None, limit: int = 8) -> dict[str, Any]:
+def search_memory(
+    query: str,
+    tenants: list[str] | None = None,
+    limit: int = 8,
+    repo: str | None = None,
+    path: str | None = None,
+    type: str | None = None,
+    tags: list[str] | None = None,
+) -> dict[str, Any]:
     """Search semantic memory inside configured readable tenant boundaries."""
     readable = policy.readable(tenants)
-    return client.search(query, tenants=readable, limit=limit)
+    return client.search(
+        query,
+        tenants=readable,
+        limit=limit,
+        repo=repo,
+        path=path,
+        type=type,
+        tags=tags,
+    )
 
 
 @mcp.tool
@@ -29,10 +45,21 @@ def related_repo_context(
     query: str,
     tenants: list[str] | None = None,
     limit: int = 8,
+    path: str | None = None,
+    type: str | None = None,
+    tags: list[str] | None = None,
 ) -> dict[str, Any]:
     """Search for context related to one repository without making repo a tenant."""
     readable = policy.readable(tenants)
-    result = client.search(query, tenants=readable, limit=limit, repo=repo)
+    result = client.search(
+        query,
+        tenants=readable,
+        limit=limit,
+        repo=repo,
+        path=path,
+        type=type,
+        tags=tags,
+    )
     result["repo_filter_note"] = f"Repository is metadata: repo={repo}"
     return result
 

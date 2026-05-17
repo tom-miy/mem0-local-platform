@@ -22,6 +22,28 @@ MCP は読み取り専用です。
 登録は GitHub Actions、`remember-to-mem0`、または Obsidian / Raycast からの
 Python CLI 呼び出しで行います。
 
+`search_memory` は、同じテナント内で次のメタデータフィルタを指定できます。
+
+- `repo`
+- `path`
+- `type`
+- `tags`
+
+例:
+
+```text
+search_memory(
+  query="trace.zip を保存する条件",
+  tenants=["secret-knowledge"],
+  repo="backend-testing-patterns",
+  type="doc",
+  tags=["testing"]
+)
+```
+
+`related_repo_context` は `repo` を必須にした検索です。
+リポジトリをテナントにせず、`repo` メタデータで検索範囲を絞ります。
+
 ## 接続方式
 
 使い方は 2 つあります。

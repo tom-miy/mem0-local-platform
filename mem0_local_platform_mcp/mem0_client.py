@@ -28,8 +28,17 @@ class Mem0Client:
         tenants: tuple[str, ...],
         limit: int = 8,
         repo: str | None = None,
+        path: str | None = None,
+        type: str | None = None,
+        tags: list[str] | None = None,
     ) -> dict[str, Any]:
-        return self._search_each_tenant(query, tenants=tenants, limit=limit, repo=repo)
+        metadata_filters = _metadata_filters(repo=repo, path=path, type=type, tags=tags)
+        return self._search_each_tenant(
+            query,
+            tenants=tenants,
+            limit=limit,
+            metadata_filters=metadata_filters,
+        )
 
     def list_recent(
         self,
@@ -42,7 +51,7 @@ class Mem0Client:
             repo or "project memories",
             tenants=tenants,
             limit=limit,
-            repo=repo,
+            metadata_filters=_metadata_filters(repo=repo),
         )
 
     def _search_each_tenant(
@@ -51,13 +60,12 @@ class Mem0Client:
         *,
         tenants: tuple[str, ...],
         limit: int,
-        repo: str | None,
+        metadata_filters: dict[str, Any],
     ) -> dict[str, Any]:
         results: list[dict[str, Any]] = []
         for tenant in tenants:
             filters: dict[str, Any] = {"user_id": tenant, "tenant": tenant}
-            if repo:
-                filters["repo"] = repo
+            filters.update(metadata_filters)
             response = self._post(
                 self.search_path,
                 {"query": query, "top_k": limit, "filters": filters},
@@ -86,3 +94,22 @@ def _extract_results(response: dict[str, Any]) -> list[dict[str, Any]]:
 def _result_score(result: dict[str, Any]) -> float:
     score = result.get("score", 0)
     return score if isinstance(score, (int, float)) else 0
+
+
+def _metadata_filters(
+    *,
+    repo: str | None = None,
+    path: str | None = None,
+    type: str | None = None,
+    tags: list[str] | None = None,
+) -> dict[str, Any]:
+    filters: dict[str, Any] = {}
+    if repo:
+        filters["repo"] = repo
+    if path:
+        filters["path"] = path
+    if type:
+        filters["type"] = type
+    if tags:
+        filters["tags"] = tags
+    return filters

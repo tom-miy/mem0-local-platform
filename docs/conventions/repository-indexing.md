@@ -4,6 +4,79 @@ Repository names are metadata. They are not tenants.
 
 Use tenants for security boundaries and use `repo` metadata for project-level
 retrieval.
+When you need both shared knowledge and repository-specific knowledge, keep them
+in the same tenant when the readable boundary is the same, and filter by `repo`,
+`path`, `type`, and `tags`. Monorepo areas should also use `path` and `tags`.
+
+## Retrieval Scopes
+
+Use metadata to split retrieval scope inside the same tenant:
+
+- `repo`: repository name from GitHub Actions or the CLI `--repo` argument
+- `path`: repository-relative path, saved automatically per file
+- `type`: broad file category inferred from `path`
+- `tags`: optional classifications passed with CLI `--tag`
+
+Registration example:
+
+```bash
+python scripts/ingest_repo.py \
+  --root /path/to/backend-testing-patterns \
+  --tenant secret-knowledge \
+  --repo backend-testing-patterns \
+  --tag backend \
+  --tag testing \
+  --since-ref origin/main
+```
+
+That produces chunk metadata such as:
+
+```json
+{
+  "tenant": "secret-knowledge",
+  "repo": "backend-testing-patterns",
+  "path": "docs/e2e.md",
+  "type": "doc",
+  "tags": ["backend", "testing"]
+}
+```
+
+MCP searches can pass the same metadata filters:
+
+```text
+search_memory(
+  query="when should trace.zip be preserved",
+  tenants=["secret-knowledge"],
+  repo="backend-testing-patterns",
+  type="doc",
+  tags=["testing"]
+)
+```
+
+Use `related_repo_context` when the repository is the main scope:
+
+```text
+related_repo_context(
+  repo="backend-testing-patterns",
+  query="E2E failure log retention policy",
+  tenants=["secret-knowledge"]
+)
+```
+
+`path` is an exact metadata filter for one file:
+
+```text
+search_memory(
+  query="retry decision criteria",
+  tenants=["secret-knowledge"],
+  repo="backend-testing-patterns",
+  path="docs/retry-policy.md"
+)
+```
+
+For broad monorepo areas such as `apps/api/**`, combine `repo`, `type`, `tags`,
+and the query text. Add tags such as `api` or `tool` at ingestion time when you
+know you will need those scopes later.
 
 ## Indexed Repository Context
 

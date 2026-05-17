@@ -4,6 +4,80 @@
 
 セキュリティ境界にはテナントを使い、プロジェクト単位の検索には `repo`
 メタデータを使います。
+全体知識と各リポジトリ知識を分けたい場合も、テナントを増やすのではなく
+`repo`、`path`、`type`、`tags` で検索範囲を絞ります。
+モノレポ内のアプリやツールの違いも `path` や `tags` で扱います。
+
+## 検索範囲の分け方
+
+同じテナント内で検索範囲を分けるときは、登録時のメタデータを使います。
+
+- `repo`: リポジトリ名。GitHub Actions の対象リポジトリ名、または CLI の `--repo`
+- `path`: リポジトリ内の相対パス。CLI がファイルごとに自動で保存
+- `type`: `path` から自動判定する大分類
+- `tags`: CLI の `--tag` で追加する任意の分類
+
+登録例:
+
+```bash
+python scripts/ingest_repo.py \
+  --root /path/to/backend-testing-patterns \
+  --tenant secret-knowledge \
+  --repo backend-testing-patterns \
+  --tag backend \
+  --tag testing \
+  --since-ref origin/main
+```
+
+この登録では、チャンクに次のようなメタデータが入ります。
+
+```json
+{
+  "tenant": "secret-knowledge",
+  "repo": "backend-testing-patterns",
+  "path": "docs/e2e.md",
+  "type": "doc",
+  "tags": ["backend", "testing"]
+}
+```
+
+MCP 検索では、同じテナント内で必要な範囲だけを指定します。
+
+```text
+search_memory(
+  query="trace.zip を保存する条件",
+  tenants=["secret-knowledge"],
+  repo="backend-testing-patterns",
+  type="doc",
+  tags=["testing"]
+)
+```
+
+特定リポジトリだけを見たい場合は `related_repo_context` を使います。
+
+```text
+related_repo_context(
+  repo="backend-testing-patterns",
+  query="E2E 失敗時のログ保存方針",
+  tenants=["secret-knowledge"]
+)
+```
+
+`path` は完全一致のメタデータフィルタです。
+特定ファイルだけを見たいときに使います。
+
+```text
+search_memory(
+  query="retry の判断基準",
+  tenants=["secret-knowledge"],
+  repo="backend-testing-patterns",
+  path="docs/retry-policy.md"
+)
+```
+
+`apps/api/**` のようなディレクトリ配下を広く探す場合は、現時点では
+`repo`、`type`、`tags` と検索語を組み合わせます。
+必要なら登録時に `--tag api` や `--tag tool` を付けておくと、後から絞りやすくなります。
 
 ## 索引対象のリポジトリ文脈
 

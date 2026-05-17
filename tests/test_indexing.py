@@ -275,6 +275,9 @@ Subscribe to the channel
             "query",
             tenants=("secret-knowledge", "client-acme"),
             repo="repo",
+            path="docs/e2e.md",
+            type="doc",
+            tags=["testing", "e2e"],
             limit=5,
         )
 
@@ -284,6 +287,9 @@ Subscribe to the channel
         self.assertEqual(first_filters["user_id"], "secret-knowledge")  # type: ignore[index]
         self.assertEqual(first_filters["tenant"], "secret-knowledge")  # type: ignore[index]
         self.assertEqual(first_filters["repo"], "repo")  # type: ignore[index]
+        self.assertEqual(first_filters["path"], "docs/e2e.md")  # type: ignore[index]
+        self.assertEqual(first_filters["type"], "doc")  # type: ignore[index]
+        self.assertEqual(first_filters["tags"], ["testing", "e2e"])  # type: ignore[index]
         self.assertEqual(second_filters["user_id"], "client-acme")  # type: ignore[index]
         self.assertEqual(
             [item["memory"] for item in result["results"]],

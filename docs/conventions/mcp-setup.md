@@ -20,6 +20,28 @@ MCP is read-only. Search tools only read configured readable tenants. Register
 new memory through GitHub Actions, `remember-to-mem0`, or Obsidian / Raycast
 wrappers around the Python CLI.
 
+`search_memory` accepts metadata filters inside the same tenant:
+
+- `repo`
+- `path`
+- `type`
+- `tags`
+
+Example:
+
+```text
+search_memory(
+  query="when should trace.zip be preserved",
+  tenants=["secret-knowledge"],
+  repo="backend-testing-patterns",
+  type="doc",
+  tags=["testing"]
+)
+```
+
+`related_repo_context` is the repository-scoped helper. It filters by `repo`
+metadata instead of making the repository a tenant.
+
 ## Connection Modes
 
 There are two common modes:

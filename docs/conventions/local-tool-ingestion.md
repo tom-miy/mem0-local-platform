@@ -160,8 +160,9 @@ uv run remember-to-mem0 \
 `--path` is the relative search path stored in mem0 metadata. It does not need
 to expose the real local filesystem path.
 
-Use a separate `client-*` tenant only when a customer or contract requires an
-isolation boundary. Use `--tag` and `--path` for public/private status,
+Use a separate tenant, such as `client-*`, only when customer work, NDA terms,
+external-sharing restrictions, or developer-specific repository access requires
+an isolation boundary. Use `--tag` and `--path` for public/private status,
 repository type, and topic metadata.
 
 If you call this from an Obsidian shell command plugin or shortcut, pass the

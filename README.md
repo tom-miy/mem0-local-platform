@@ -92,31 +92,60 @@ Git repository
 
 ## Tenant Strategy
 
-Tenant is a security boundary. It is not a repository name.
+Tenant is a boundary for "which knowledge this agent or developer may read."
+Use tenants to separate knowledge that must not be mixed, such as customer work,
+NDA-covered work, external-sharing restrictions, or developer/team-specific
+repository access.
 
 Use tenants for isolation scopes such as:
 
 - `secret-knowledge`
 - `client-*`
 
-Repository name is metadata:
+Repository retrieval should use metadata:
 
 ```json
 {
   "tenant": "secret-knowledge",
   "repo": "backend-testing-patterns",
-  "path": "docs/e2e.md"
+  "path": "docs/e2e.md",
+  "type": "doc",
+  "tags": ["testing", "e2e"]
 }
 ```
+
+Do not make repository-per-tenant the default. It makes shared knowledge harder
+to retrieve across repositories, turns repository rename or split work into
+access-control changes, and does not model monorepo areas such as `apps/api`,
+`tools/review`, or `docs/adr`. Use `repo`, `path`, `type`, and `tags` for those
+retrieval scopes. A dedicated tenant is reasonable only when the repository
+itself is a customer, NDA, external-sharing, or developer access boundary.
+
+Search example:
+
+```text
+search_memory(
+  query="when should trace.zip be preserved for E2E failures",
+  tenants=["secret-knowledge"],
+  repo="backend-testing-patterns",
+  type="doc",
+  tags=["testing"]
+)
+```
+
+Omit `repo` for shared knowledge across repositories. Use `path` for one exact
+file.
 
 `secret-knowledge` is an example tenant for your own judgment patterns and
 internal knowledge that do not need a customer-specific tenant. It does not mean
 that arbitrary secrets should be stored there. Replace it with the tenant name
 that represents your company, studio, team, or solo business boundary if needed.
 Use that tenant for public repositories, publishable skills, private judgment
-patterns, templates, research tools, and sales or deal notes. Use `client-*`
-only when a customer or contract needs its own isolation boundary. Public/private
-status, topic, and repository type should be metadata, not tenants.
+patterns, templates, research tools, and sales or deal notes. Use `client-*` or
+another dedicated tenant only when customer work, NDA terms, external-sharing
+restrictions, or developer access differences need their own isolation boundary.
+Public/private status, topic, and repository type should be metadata, not
+tenants.
 
 ## GitHub Sync Strategy
 
@@ -498,13 +527,25 @@ mise run check
 - Service tokens are used for agent authentication through Cloudflare Access.
 - Secrets and personal data must not be emitted in logs.
 
-For local Claude Code, Cursor, Copilot, or Codex usage, pair this repository with
-`agent-privacy-guard` so retrieved mem0 context can be anonymized and routed
-before it is sent to an AI client or external model. `agent-privacy-guard` acts
-as an AI Agent Governance Gateway for prompt anonymization, MCP trust routing,
-and hook-based safety controls. mem0-local-platform stores and retrieves memory;
-`agent-privacy-guard` controls prompts and tool calls, including retrieved
-memory context, before they leave the local client path.
+`agent-privacy-guard` is a separate GitHub repository for Claude Code, Cursor,
+Copilot, and Codex safety controls. It is intended to anonymize prompts, route
+MCP calls by trust level, and apply hook-based guardrails before data leaves the
+local client path. mem0-local-platform stores and retrieves memory. The current
+recommended integration is not to anonymize the user's query before mem0 search;
+the safer target is anonymizing content before it is written into mem0.
+
+Current limitation: pre-search prompt anonymization can make mem0 search worse
+when the memory was indexed as raw text. If `agent-privacy-guard` replaces a
+customer name, repository name, API name, or file name in the user prompt before
+the MCP search call, the sanitized query may no longer match the raw text stored
+in mem0.
+
+TODO: add optional sanitize-on-ingest support. For tenants that require this,
+GitHub Actions and the Python ingestion CLI should pass chunk content through
+`agent-privacy-guard` before writing to mem0. In that mode, mem0 stores only
+sanitized text, while raw source remains in Git, Markdown, ADRs, or Obsidian.
+Post-retrieval sanitization should be only a fallback for legacy raw data or
+mixed trust routes, not the primary integration.
 
 That control does not normally apply to GitHub Actions sync jobs. GitHub Actions
 runs the reusable workflow directly on a GitHub runner. Protect Actions sync with

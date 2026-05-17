@@ -41,14 +41,29 @@ GitHub Actions などのクライアントは Tunnel token を使いません。
 
 ## agent-privacy-guard との関係
 
-ローカルの Claude Code、Cursor、Copilot、Codex から mem0-local-platform を使う場合は、
-`agent-privacy-guard` と組み合わせると、mem0 から取り出した文脈を AI に渡す前に
-匿名化や trust routing をかけられます。
-`agent-privacy-guard` は prompt 匿名化、MCP trust routing、hook ベースの安全制御を
-担当します。
+`agent-privacy-guard` は、別の GitHub リポジトリで作っている
+Claude Code、Cursor、Copilot、Codex 向けのプロンプト安全制御です。
+ユーザーの依頼文やツール呼び出しに含まれる顧客名、リポジトリ名、API 名などを
+匿名化し、MCP 呼び出しの信頼経路を分け、フックで危険な操作を止める役割を持ちます。
+mem0-local-platform との連携では、検索語を先に匿名化する使い方を標準にはしません。
+より安全な連携点は、mem0 に書き込む前に本文を匿名化する経路です。
+
+現時点の問題は、mem0 に生の本文を保存している場合、検索前の匿名化で
+mem0 検索の精度が落ちることです。
+たとえば MCP 検索前に顧客名、リポジトリ名、API 名、ファイル名が置換されると、
+匿名化後の検索語が取り込み済みの生の本文と一致しにくくなります。
+
+TODO として、取り込み時匿名化、つまり `sanitize-on-ingest` を主な連携点として設計します。
+取り込み経路は `memory.add` の前に必要に応じて `agent-privacy-guard` を呼び、
+mem0 には匿名化済みチャンク本文だけを保存します。
+チャンクには `sanitized=true`、`sanitizer=agent-privacy-guard`、
+`sanitization_profile` のようなメタデータを付けます。
+生の情報は Git、Markdown、ADR、Obsidian に残します。
+取得後匿名化は、過去の生データや信頼経路が混在する場合のフォールバックに限定し、
+標準設計にはしません。
 
 GitHub Actions の同期ジョブには、通常この制御は効きません。
-Actions は GitHub runner 上で直接実行されるため、ローカルの hook や gateway を
+Actions は GitHub runner 上で直接実行されるため、ローカルのフックやゲートウェイを
 通りません。Actions 側は Cloudflare Access のサービストークン、GitHub secrets、
 取り込み対象パス、テナント指定で保護します。
 

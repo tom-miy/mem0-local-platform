@@ -41,10 +41,25 @@ the Access service token headers above.
 
 ## Relationship With agent-privacy-guard
 
-For local Claude Code, Cursor, Copilot, or Codex usage, pair mem0-local-platform
-with `agent-privacy-guard` so retrieved mem0 context can be anonymized and routed
-before it is sent to an AI client or external model. `agent-privacy-guard`
-handles prompt anonymization, MCP trust routing, and hook-based safety controls.
+`agent-privacy-guard` is a separate GitHub repository for Claude Code, Cursor,
+Copilot, and Codex prompt safety. It anonymizes prompts, routes MCP calls by
+trust level, and applies hook-based controls before data leaves the local client
+path. For mem0-local-platform, the recommended direction is not pre-search query
+anonymization. The safer integration point is anonymizing content before it is
+written into mem0.
+
+Current limitation: pre-search anonymization can make mem0 search worse when
+mem0 contains raw indexed text. For example, if `agent-privacy-guard` replaces a
+customer, repository, API, or file name before an MCP search call, the sanitized
+query may no longer match the raw text stored by the repository ingester.
+
+TODO: design sanitize-on-ingest as the primary integration point. The ingestion
+path should optionally call `agent-privacy-guard` before `memory.add`, store only
+sanitized chunk text in mem0, and mark chunks with metadata such as
+`sanitized=true`, `sanitizer=agent-privacy-guard`, and `sanitization_profile`.
+Raw source should remain in Git, Markdown, ADRs, or Obsidian. Post-retrieval
+sanitization should stay a compatibility fallback for legacy raw memory or mixed
+trust routes, not the default design.
 
 That control does not normally apply to GitHub Actions sync jobs. Actions run
 directly on GitHub runners and do not pass through local hooks or a local gateway.
