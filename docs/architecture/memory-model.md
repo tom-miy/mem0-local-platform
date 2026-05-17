@@ -11,12 +11,13 @@ retrieve context during development.
 Chunks use stable upsert IDs derived from:
 
 ```text
-repo:path:heading
+repo:path:heading[:occurrence]
 ```
 
-The current implementation hashes that value with SHA-256. This keeps repeated
-workflow runs idempotent while allowing content updates under the same heading to
-replace prior indexed content.
+The occurrence suffix is used only when the same heading appears more than once
+in the same file. The current implementation hashes that value with SHA-256.
+This keeps repeated workflow runs idempotent while allowing content updates
+under the same heading to replace prior indexed content.
 
 ## Metadata
 

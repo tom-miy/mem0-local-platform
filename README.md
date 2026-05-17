@@ -87,7 +87,7 @@ Git repository
 2. GitHub push triggers `.github/workflows/reusable-sync.yml`.
 3. The workflow selects changed files or all tracked files.
 4. `scripts/ingest_repo.py` indexes repository context files.
-5. Chunks are upserted with stable IDs based on `repo + path + heading`.
+5. Chunks are upserted with stable IDs based on `repo + path + heading + occurrence`.
 6. Agents retrieve memory through MCP tools with tenant filters applied.
 
 ## Tenant Strategy
@@ -287,8 +287,11 @@ indexed as repository context chunks. Each chunk preserves:
 Stable IDs are SHA-256 hashes of:
 
 ```text
-repo:path:heading
+repo:path:heading[:occurrence]
 ```
+
+The occurrence suffix is used only when the same heading appears more than once
+in the same file.
 
 ## MCP Integration
 
@@ -420,6 +423,15 @@ Pull the default Ollama models into the compose `ollama` service:
 ```bash
 mise run ollama-pull
 ```
+
+Default local model split:
+
+```text
+qwen3.5:4b = reasoning, extraction, metadata, summarization, MCP/tool layer
+bge-m3     = retrieval and semantic search layer
+```
+
+Do not use `qwen3.5:4b` as the embedding model.
 
 The `mem0` service is built from this repository. It wraps the mem0 OSS Python
 library instead of depending on an unverified external image.

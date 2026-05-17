@@ -27,7 +27,7 @@ mise run up-tailscale-resources
 
 ```text
 ホストメモリ: 12GB から 16GB
-例: qwen3:4b + nomic-embed-text
+例: qwen3.5:4b + bge-m3
 ```
 
 大きめのローカルモデルを使う場合:

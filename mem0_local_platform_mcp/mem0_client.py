@@ -29,13 +29,7 @@ class Mem0Client:
         limit: int = 8,
         repo: str | None = None,
     ) -> dict[str, Any]:
-        filters: dict[str, Any] = {"tenant": {"in": list(tenants)}}
-        if repo:
-            filters["repo"] = repo
-        return self._post(
-            self.search_path,
-            {"query": query, "top_k": limit, "filters": filters},
-        )
+        return self._search_each_tenant(query, tenants=tenants, limit=limit, repo=repo)
 
     def list_recent(
         self,
@@ -44,13 +38,34 @@ class Mem0Client:
         repo: str | None,
         limit: int = 10,
     ) -> dict[str, Any]:
-        filters: dict[str, Any] = {"tenant": {"in": list(tenants)}}
-        if repo:
-            filters["repo"] = repo
-        return self._post(
-            self.search_path,
-            {"query": repo or "project memories", "top_k": limit, "filters": filters},
+        return self._search_each_tenant(
+            repo or "project memories",
+            tenants=tenants,
+            limit=limit,
+            repo=repo,
         )
+
+    def _search_each_tenant(
+        self,
+        query: str,
+        *,
+        tenants: tuple[str, ...],
+        limit: int,
+        repo: str | None,
+    ) -> dict[str, Any]:
+        results: list[dict[str, Any]] = []
+        for tenant in tenants:
+            filters: dict[str, Any] = {"user_id": tenant, "tenant": tenant}
+            if repo:
+                filters["repo"] = repo
+            response = self._post(
+                self.search_path,
+                {"query": query, "top_k": limit, "filters": filters},
+            )
+            results.extend(_extract_results(response))
+
+        results.sort(key=_result_score, reverse=True)
+        return {"results": results[:limit]}
 
     def _post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
         response = httpx.post(
@@ -61,3 +76,13 @@ class Mem0Client:
         )
         response.raise_for_status()
         return response.json()
+
+
+def _extract_results(response: dict[str, Any]) -> list[dict[str, Any]]:
+    results = response.get("results", response.get("memories", []))
+    return results if isinstance(results, list) else []
+
+
+def _result_score(result: dict[str, Any]) -> float:
+    score = result.get("score", 0)
+    return score if isinstance(score, (int, float)) else 0

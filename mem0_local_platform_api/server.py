@@ -59,12 +59,13 @@ def delete_memories(filters: str = Query(default="{}")) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail="filters must be valid JSON") from exc
     if not parsed:
         raise HTTPException(status_code=400, detail="filters are required")
+    search_filters = _mem0_search_filters(parsed)
 
     memory = get_memory()
     deleted = 0
 
     while True:
-        matches = memory.search("", filters=parsed, top_k=100)
+        matches = memory.search("", filters=search_filters, top_k=100)
         results = _extract_results(matches)
         if not results:
             break
@@ -112,7 +113,7 @@ def get_memory() -> Any:
                 "host": os.getenv("QDRANT_HOST", "qdrant"),
                 "port": int(os.getenv("QDRANT_PORT", "6333")),
                 "collection_name": os.getenv("QDRANT_COLLECTION", "developer_memories"),
-                "embedding_model_dims": int(os.getenv("MEM0_EMBEDDING_DIMS", "768")),
+                "embedding_model_dims": int(os.getenv("MEM0_EMBEDDING_DIMS", "1024")),
             },
         },
         "graph_store": {
@@ -124,14 +125,15 @@ def get_memory() -> Any:
         "llm": {
             "provider": os.getenv("MEM0_LLM_PROVIDER", "ollama"),
             "config": {
-                "model": os.getenv("MEM0_LLM_MODEL", "llama3.1:latest"),
+                "model": os.getenv("MEM0_LLM_MODEL", "qwen3.5:4b"),
+                "temperature": float(os.getenv("MEM0_LLM_TEMPERATURE", "0.1")),
                 "ollama_base_url": os.getenv("OLLAMA_BASE_URL", "http://ollama:11434"),
             },
         },
         "embedder": {
             "provider": os.getenv("MEM0_EMBEDDER_PROVIDER", "ollama"),
             "config": {
-                "model": os.getenv("MEM0_EMBEDDER_MODEL", "nomic-embed-text:latest"),
+                "model": os.getenv("MEM0_EMBEDDER_MODEL", "bge-m3"),
                 "ollama_base_url": os.getenv("OLLAMA_BASE_URL", "http://ollama:11434"),
             },
         },
@@ -146,6 +148,19 @@ def _extract_results(response: Any) -> list[dict[str, Any]]:
     if isinstance(response, list):
         return response
     return []
+
+
+def _mem0_search_filters(filters: dict[str, Any]) -> dict[str, Any]:
+    search_filters = dict(filters)
+    tenant = search_filters.get("tenant")
+    if "user_id" not in search_filters and isinstance(tenant, str) and tenant:
+        search_filters["user_id"] = tenant
+    if not any(key in search_filters for key in ("user_id", "agent_id", "run_id")):
+        raise HTTPException(
+            status_code=400,
+            detail="filters must include tenant, user_id, agent_id, or run_id",
+        )
+    return search_filters
 
 
 def main() -> None:

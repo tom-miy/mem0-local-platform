@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from scripts.chunk_markdown import chunk_markdown, stable_chunk_id
+from scripts.chunk_markdown import chunk_markdown, infer_document_type, stable_chunk_id
 from scripts.cleanup_text import cleanup_text
 from scripts.ingest_repo import (
     Mem0HttpClient,
@@ -19,7 +19,7 @@ from scripts.sync_path_rules import load_sync_config
 from scripts.sync_local_repo import unique_paths
 from mem0_local_platform_mcp.mem0_client import Mem0Client
 from mem0_local_platform_mcp.tenant_policy import TenantPolicy
-from mem0_local_platform_api.server import delete_memories
+from mem0_local_platform_api.server import _mem0_search_filters, delete_memories
 
 
 class IndexingTests(unittest.TestCase):
@@ -70,6 +70,14 @@ Subscribe to the channel
         self.assertNotEqual(chunks[0].stable_id, chunks[1].stable_id)
         self.assertEqual(chunks[0].metadata["heading_occurrence"], 1)
         self.assertEqual(chunks[1].metadata["heading_occurrence"], 2)
+
+    def test_infer_document_type_matches_indexed_path_rules(self) -> None:
+        self.assertEqual(infer_document_type("README.md"), "readme")
+        self.assertEqual(infer_document_type("README.jp.md"), "readme")
+        self.assertEqual(infer_document_type("adr/0001-record.md"), "adr")
+        self.assertEqual(infer_document_type("adrs/0001-record.md"), "adr")
+        self.assertEqual(infer_document_type("cmd/server/main.go"), "code")
+        self.assertEqual(infer_document_type("api/openapi.yaml"), "config")
 
     def test_should_index_repository_context_paths(self) -> None:
         self.assertTrue(should_index(Path("README.md")))
@@ -211,9 +219,16 @@ Subscribe to the channel
             def __init__(self) -> None:
                 self.ids = [f"memory-{index}" for index in range(105)]
                 self.deleted: list[str] = []
+                self.search_filters: list[dict[str, object]] = []
 
-            def search(self, _query: str, *, filters: dict[str, object], top_k: int) -> dict[str, object]:
-                self.assert_filters = filters
+            def search(
+                self,
+                _query: str,
+                *,
+                filters: dict[str, object],
+                top_k: int,
+            ) -> dict[str, object]:
+                self.search_filters.append(filters)
                 remaining = [memory_id for memory_id in self.ids if memory_id not in self.deleted]
                 return {"results": [{"id": memory_id} for memory_id in remaining[:top_k]]}
 
@@ -227,6 +242,53 @@ Subscribe to the channel
 
         self.assertEqual(result["deleted_count"], 105)
         self.assertEqual(len(memory.deleted), 105)
+        self.assertEqual(memory.search_filters[0]["user_id"], "secret-knowledge")
+        self.assertEqual(memory.search_filters[0]["tenant"], "secret-knowledge")
+
+    def test_mem0_search_filters_map_tenant_to_user_id(self) -> None:
+        self.assertEqual(
+            _mem0_search_filters(
+                {"tenant": "secret-knowledge", "repo": "repo", "path": "docs/example.md"}
+            ),
+            {
+                "tenant": "secret-knowledge",
+                "user_id": "secret-knowledge",
+                "repo": "repo",
+                "path": "docs/example.md",
+            },
+        )
+
+    def test_mcp_client_searches_each_tenant_with_user_id_filter(self) -> None:
+        class FakeClient(Mem0Client):
+            def __init__(self) -> None:
+                self.search_path = "/search"
+                self.calls: list[dict[str, object]] = []
+
+            def _post(self, _path: str, payload: dict[str, object]) -> dict[str, object]:
+                self.calls.append(payload)
+                filters = payload["filters"]  # type: ignore[index]
+                tenant = filters["user_id"]  # type: ignore[index]
+                return {"results": [{"memory": tenant, "score": 1}]}
+
+        client = FakeClient()
+        result = client.search(
+            "query",
+            tenants=("secret-knowledge", "client-acme"),
+            repo="repo",
+            limit=5,
+        )
+
+        self.assertEqual(len(client.calls), 2)
+        first_filters = client.calls[0]["filters"]  # type: ignore[index]
+        second_filters = client.calls[1]["filters"]  # type: ignore[index]
+        self.assertEqual(first_filters["user_id"], "secret-knowledge")  # type: ignore[index]
+        self.assertEqual(first_filters["tenant"], "secret-knowledge")  # type: ignore[index]
+        self.assertEqual(first_filters["repo"], "repo")  # type: ignore[index]
+        self.assertEqual(second_filters["user_id"], "client-acme")  # type: ignore[index]
+        self.assertEqual(
+            [item["memory"] for item in result["results"]],
+            ["secret-knowledge", "client-acme"],
+        )
 
     def test_tenant_policy_rejects_out_of_boundary_reads(self) -> None:
         policy = TenantPolicy(read_tenants=("secret-knowledge",))
@@ -361,7 +423,7 @@ Subscribe to the channel
             self.assertIsInstance(vector_store, dict)
             vector_config = vector_store["config"]  # type: ignore[index]
             self.assertEqual(vector_config["host"], "qdrant")  # type: ignore[index]
-            self.assertEqual(vector_config["embedding_model_dims"], 768)  # type: ignore[index]
+            self.assertEqual(vector_config["embedding_model_dims"], 1024)  # type: ignore[index]
 
     def test_markdown_docs_have_japanese_counterparts(self) -> None:
         markdown_files = [

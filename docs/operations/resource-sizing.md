@@ -27,7 +27,7 @@ Local Ollama with a small LLM and embedding model:
 
 ```text
 Host memory: 12GB to 16GB
-Example: qwen3:4b + nomic-embed-text
+Example: qwen3.5:4b + bge-m3
 ```
 
 Larger local models:

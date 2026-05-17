@@ -100,13 +100,21 @@ def stable_chunk_id(*, repo: str, path: str, heading: str, occurrence: int = 1) 
 
 def infer_document_type(path: str) -> str:
     lower = path.lower()
-    if "/adr/" in lower or lower.startswith("adr/") or "/adrs/" in lower:
+    name = lower.rsplit("/", 1)[-1]
+    if (
+        "/adr/" in lower
+        or lower.startswith("adr/")
+        or "/adrs/" in lower
+        or lower.startswith("adrs/")
+    ):
         return "adr"
-    if lower.endswith("readme.md"):
+    if name == "readme.md" or (name.startswith("readme.") and name.endswith(".md")):
         return "readme"
     if lower.startswith("docs/") or "/docs/" in lower:
         return "doc"
-    if lower.endswith((".go", ".py", ".ts", ".tsx", ".js", ".jsx", ".rs", ".java", ".kt", ".sql", ".sh")):
+    if lower.endswith(
+        (".go", ".py", ".ts", ".tsx", ".js", ".jsx", ".rs", ".java", ".kt", ".sql", ".sh")
+    ):
         return "code"
     if lower.endswith((".yaml", ".yml", ".json", ".toml", ".ini", ".proto", ".graphql")):
         return "config"
