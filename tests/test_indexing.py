@@ -1,9 +1,12 @@
 from pathlib import Path
 import json
+import os
 import re
 import tempfile
 import unittest
 from unittest.mock import patch
+
+from fastapi import HTTPException
 
 from scripts.chunk_markdown import chunk_markdown, infer_document_type, stable_chunk_id
 from scripts.cleanup_text import cleanup_text
@@ -19,7 +22,7 @@ from scripts.sync_path_rules import load_sync_config
 from scripts.sync_local_repo import unique_paths
 from mem0_local_platform_mcp.mem0_client import Mem0Client
 from mem0_local_platform_mcp.tenant_policy import TenantPolicy
-from mem0_local_platform_api.server import _mem0_search_filters, delete_memories
+from mem0_local_platform_api.server import _mem0_search_filters, delete_memories, require_api_key
 
 
 class IndexingTests(unittest.TestCase):
@@ -257,6 +260,19 @@ Subscribe to the channel
                 "path": "docs/example.md",
             },
         )
+
+    def test_api_key_is_optional_when_not_configured(self) -> None:
+        with patch.dict(os.environ, {"MEM0_API_KEY": ""}, clear=False):
+            self.assertIsNone(require_api_key())
+
+    def test_api_key_rejects_wrong_bearer_token_when_configured(self) -> None:
+        with patch.dict(os.environ, {"MEM0_API_KEY": "expected"}, clear=False):
+            with self.assertRaises(HTTPException):
+                require_api_key("Bearer wrong")
+
+    def test_api_key_accepts_matching_bearer_token_when_configured(self) -> None:
+        with patch.dict(os.environ, {"MEM0_API_KEY": "expected"}, clear=False):
+            self.assertIsNone(require_api_key("Bearer expected"))
 
     def test_mcp_client_searches_each_tenant_with_user_id_filter(self) -> None:
         class FakeClient(Mem0Client):

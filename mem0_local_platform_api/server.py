@@ -7,14 +7,24 @@ from __future__ import annotations
 
 import json
 import os
+import secrets
 from functools import lru_cache
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 
 
-app = FastAPI(title="mem0-local-platform API")
+def require_api_key(authorization: Annotated[str | None, Header()] = None) -> None:
+    expected = os.getenv("MEM0_API_KEY", "")
+    if not expected:
+        return
+    actual = authorization.removeprefix("Bearer ").strip() if authorization else ""
+    if not secrets.compare_digest(actual, expected):
+        raise HTTPException(status_code=401, detail="invalid MEM0_API_KEY")
+
+
+app = FastAPI(title="mem0-local-platform API", dependencies=[Depends(require_api_key)])
 
 
 class AddRequest(BaseModel):

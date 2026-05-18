@@ -225,8 +225,13 @@ For repository sync from GitHub Actions, `MEM0_API_URL` should be the
 Cloudflare-protected mem0 API hostname, not the internal compose URL.
 GitHub Actions authenticates to Cloudflare Access with repository secrets named
 `MEM0_CLOUDFLARE_ACCESS_CLIENT_ID` and `MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET`.
-`MEM0_API_KEY` is optional and only needed when the mem0 endpoint or a custom
-gateway requires a Bearer token.
+That service token can reach the mem0 API. For sensitive tenants or customer
+repositories, prefer local clone sync, Tailscale-based sync, a self-hosted runner
+inside the private network, or a write-only ingestion gateway instead of direct
+Actions access.
+`MEM0_API_KEY` is enforced by the mem0 API runtime when the same value is set on
+the server. It may be empty for local-only experiments, but set it for exposed or
+production deployments.
 `CLOUDFLARE_TUNNEL_TOKEN` is only used by the platform runtime's
 `cloudflared` service.
 
@@ -365,6 +370,9 @@ mem0-mcp.example.com -> http://mcp:8010
 ```
 
 Do not log service tokens or copy them into Markdown docs.
+Do not broadly share a service token that can reach mem0. Keep GitHub Actions
+tokens limited to selected repositories, and avoid direct Actions sync for
+highly sensitive tenants until a write-only ingestion gateway is in place.
 
 ## Tailscale Access
 

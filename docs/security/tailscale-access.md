@@ -7,10 +7,14 @@ Cloudflare Tunnel is still the default path for GitHub Actions and external
 automation agents that need a public hostname protected by Cloudflare Access.
 Tailscale is for management, verification, and local ingestion from devices in
 your Tailscale account or organization network.
+For sensitive repositories where you do not want a mem0 service token in GitHub
+Actions, use Tailscale-based local sync or a self-hosted runner inside the
+private network.
 
 ## When To Use It
 
-- GitHub Actions sync: Cloudflare Tunnel + Cloudflare Access
+- Normal GitHub Actions sync: Cloudflare Tunnel + Cloudflare Access
+- Sensitive repository sync: Tailscale-based local sync or private-network self-hosted runner
 - External automation agents: Cloudflare Tunnel + Cloudflare Access
 - Your devices reaching a home server: Tailscale
 - Compose-internal service calls: Docker DNS
@@ -161,7 +165,9 @@ MEM0_TENANT_POLICY_FILE=mem0.policy.yml
 ```
 
 Cloudflare Access service tokens are not needed on the Tailscale path. GitHub
-Actions should still use the Cloudflare Access path, not Tailscale.
+hosted runners normally use the Cloudflare Access path, not Tailscale. If you do
+not want a mem0 service token stored in GitHub Actions, do not use direct
+GitHub-hosted runner sync; use local sync or a self-hosted runner instead.
 
 ## Notes
 

@@ -39,6 +39,52 @@ from outside the compose network. Inside the compose network, services call
 the tunnel. Clients such as GitHub Actions do not use the tunnel token. They use
 the Access service token headers above.
 
+Add API-level protection as well by setting `MEM0_API_KEY` on the mem0 API
+runtime. When set, the API requires `Authorization: Bearer <MEM0_API_KEY>`.
+For production, do not rely on the Cloudflare Access service token alone.
+
+## GitHub Actions Risk
+
+Putting a Cloudflare Access service token in GitHub Actions lets any workflow
+that can read that secret reach the Cloudflare-protected mem0 API. Cloudflare
+Access is network access control; it is not fine-grained authorization for mem0
+tenants, repositories, or paths.
+
+The current API exposes `/add`, `/search`, and `/v1/memories/` on the same API
+host. If an Actions service token leaks, the holder may be able to reach search
+endpoints, not just ingestion. Do not treat direct GitHub Actions access as the
+default for highly sensitive customer data, private judgment patterns, or
+external-sharing-restricted content.
+If `MEM0_API_KEY` is enabled, the Cloudflare service token alone is not enough
+to call the API. GitHub Actions still needs the API key as a secret, so GitHub
+secret leakage remains part of the threat model.
+
+Production guidance:
+
+- Use GitHub Actions sync only for low-to-medium-risk repository knowledge.
+- For sensitive tenants, use local clone sync, Tailscale-based sync, or a
+  self-hosted runner inside the private network.
+- Use separate service tokens per repository or per automation purpose.
+- If using organization secrets, keep `--visibility selected` and limit the
+  repository set.
+- Do not expose mem0 connection secrets to public repositories or fork pull
+  requests.
+- Separate the Actions hostname from the MCP/search hostname in Cloudflare
+  Access.
+- Point the Actions hostname to a write-only ingestion gateway when available.
+
+Safer target shape:
+
+```text
+mem0-ingest.example.com -> write-only ingestion gateway
+mem0-mcp.example.com    -> MCP/search service
+```
+
+GitHub Actions should call only `mem0-ingest.example.com`. The Actions service
+token should not be accepted by `mem0-mcp.example.com`. The current compose stack
+does not yet include a write-only ingestion gateway. Until it exists, use local
+sync or a self-hosted runner for sensitive data instead of direct Actions sync.
+
 ## Relationship With agent-privacy-guard
 
 `agent-privacy-guard` is a separate GitHub repository for Claude Code, Cursor,

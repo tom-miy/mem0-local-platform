@@ -10,6 +10,14 @@ contain a thin caller workflow and optional path rules.
 mem0-local-platform must be running, and GitHub Actions must be able to reach the
 mem0 API through Cloudflare Access.
 
+Warning: putting a Cloudflare Access service token in GitHub Actions lets any
+workflow that can read that secret reach the mem0 API. The current API serves
+ingestion and search on the same API host, so direct Actions access is not the
+default recommendation for highly sensitive tenants or customer repositories.
+Use local clone sync, Tailscale-based sync, a self-hosted runner inside the
+private network, or a write-only ingestion gateway for those cases. See
+[Cloudflare Access](../security/cloudflare-access.md).
+
 Set these GitHub repository secrets:
 
 - `MEM0_API_URL`
@@ -19,9 +27,10 @@ Set these GitHub repository secrets:
 `MEM0_API_URL` should be the Cloudflare-protected hostname. Do not use the
 internal compose URL from GitHub Actions.
 
-`MEM0_API_KEY` is optional. Leave it unset for the default self-hosted runtime
-protected by Cloudflare Access. Set it only when the mem0 endpoint itself, a SaaS
-mem0 API, or a custom gateway requires a Bearer token.
+`MEM0_API_KEY` is enforced by the mem0 API runtime when the same value is set on
+the server. It may be empty for local-only experiments, but set it for exposed or
+production deployments. Pass the same value to GitHub Actions as the
+`MEM0_API_KEY` secret.
 
 Set them with GitHub CLI:
 
@@ -49,12 +58,15 @@ Example `mem0.github-secrets.env`:
 
 ```env
 MEM0_API_URL=https://mem0-api.example.com
+MEM0_API_KEY=...
 MEM0_CLOUDFLARE_ACCESS_CLIENT_ID=...
 MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET=...
 ```
 
 If many repositories under the same organization use the same mem0 endpoint,
 store the secrets at the organization level instead:
+Broadly shared mem0 secrets increase blast radius. In production, start with
+`--visibility selected` and explicitly list the repositories.
 
 ```bash
 gh secret set MEM0_API_URL \
@@ -78,12 +90,16 @@ gh secret set MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET \
 
 Use `--visibility private` for all private repositories in the organization, or
 `--visibility all` only when public repositories should also receive the secret.
+Do not use `--visibility all` for a service token that can reach sensitive
+tenants.
 For personal accounts, GitHub Actions secrets are repository-level; user-level
 `gh secret set --user` is for Codespaces, not Actions.
 
 If a client repository cannot connect to the mem0 API from GitHub Actions, do
 not use this workflow. Sync from a local clone instead. See "Local Repository
 Diff Sync" in [Local Tool Ingestion](local-tool-ingestion.md).
+Use the same local-sync path for sensitive repositories where you do not want a
+mem0 service token stored in GitHub Actions.
 
 ## Install
 
