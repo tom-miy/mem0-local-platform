@@ -52,5 +52,5 @@ Qdrant stores semantic vectors and supports similarity retrieval.
 The source repository can rebuild both stores, so operational recovery starts
 from Git rather than from mem0 exports.
 
-The compose runtime uses the local API package in this repository to pass Qdrant
-and FalkorDB settings into the mem0 OSS library.
+The Docker Compose runtime uses the API package in this repository to pass Qdrant and
+FalkorDB settings into the mem0 OSS library.

@@ -1,0 +1,27 @@
+sanitization:
+  sanitizer: mem0-local-platform
+  tenants:
+    secret-knowledge:
+      mode: required
+      profile: default
+  profiles:
+    default:
+      allow_terms:
+        - mem0
+        - Qdrant
+      sensitive_terms:
+        - name: client-name
+          term: client-acme
+          replacement: CUSTOMER_1
+          aliases:
+            - Acme client
+        - name: internal-project-name
+          term: internal-payment-risk-review
+          replacement: PROJECT_1
+      sensitive_patterns:
+        - name: access-key-assignment
+          pattern: '(?i)\b[A-Z0-9_]*(?:ACCESS|SECRET|API)_KEY\s*=\s*[^\s]+'
+          replacement: REDACTED_SECRET_ASSIGNMENT
+        - name: bearer-token
+          pattern: '(?i)\bBearer\s+[A-Za-z0-9._~+/=-]{12,}'
+          replacement: 'Bearer REDACTED_TOKEN'

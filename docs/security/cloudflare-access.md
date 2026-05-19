@@ -1,6 +1,6 @@
 # Cloudflare Access
 
-Cloudflare Tunnel is part of the default runtime. The compose stack runs
+Cloudflare Tunnel is part of the default runtime. The Docker Compose stack runs
 `cloudflared` and exposes internal services through Docker DNS instead of
 requiring direct inbound ports.
 
@@ -16,8 +16,8 @@ mem0-api.example.com -> http://mem0:8000
 mem0-mcp.example.com -> http://mcp:8010
 ```
 
-Those service names are compose service names. They are reachable from the
-`cloudflared` container on the default compose network.
+Those service names are Docker Compose service names. They are reachable from the
+`cloudflared` container on the default Docker Compose network.
 
 ## Service Token Headers
 
@@ -32,7 +32,7 @@ Store those values in the agent runtime or CI secret store. Do not commit them
 to this repository.
 
 The MCP and ingestion clients should call the Cloudflare-protected hostnames
-from outside the compose network. Inside the compose network, services call
+from outside the Docker Compose network. Inside the Docker Compose network, services call
 `http://mem0:8000`.
 
 `CLOUDFLARE_TUNNEL_TOKEN` is only for the `cloudflared` service that maintains
@@ -50,10 +50,11 @@ that can read that secret reach the Cloudflare-protected mem0 API. Cloudflare
 Access is network access control; it is not fine-grained authorization for mem0
 tenants, repositories, or paths.
 
-The current API exposes `/add`, `/search`, and `/v1/memories/` on the same API
-host. If an Actions service token leaks, the holder may be able to reach search
-endpoints, not just ingestion. Do not treat direct GitHub Actions access as the
-default for highly sensitive customer data, private judgment patterns, or
+The current API exposes `/add`, `/search`, `/v1/memories/`, and
+`/v1/sanitization/audit` on the same API host. If an Actions service token
+leaks, the holder may be able to reach search and inventory endpoints, not just
+ingestion. Do not treat direct GitHub Actions access as the default for highly
+sensitive customer data, private judgment patterns, or
 external-sharing-restricted content.
 If `MEM0_API_KEY` is enabled, the Cloudflare service token alone is not enough
 to call the API. GitHub Actions still needs the API key as a secret, so GitHub
@@ -81,7 +82,7 @@ mem0-mcp.example.com    -> MCP/search service
 ```
 
 GitHub Actions should call only `mem0-ingest.example.com`. The Actions service
-token should not be accepted by `mem0-mcp.example.com`. The current compose stack
+token should not be accepted by `mem0-mcp.example.com`. The current Docker Compose stack
 does not yet include a write-only ingestion gateway. Until it exists, use local
 sync or a self-hosted runner for sensitive data instead of direct Actions sync.
 
@@ -90,35 +91,46 @@ sync or a self-hosted runner for sensitive data instead of direct Actions sync.
 `agent-privacy-guard` is a separate GitHub repository for Claude Code, Cursor,
 Copilot, and Codex prompt safety. It anonymizes prompts, routes MCP calls by
 trust level, and applies hook-based controls before data leaves the local client
-path. For mem0-local-platform, the recommended direction is not pre-search query
-anonymization. The intended integration point is anonymizing content before it is
-written into mem0.
+path. mem0-local-platform stores and retrieves memory.
 
-Anonymization does not make sensitive information safe by itself. It only reduces
-impact if data leaks. It is not a replacement for access control, tenant
-isolation, secret handling, or review of what is ingested. Even when customer
-names or personal names are removed, architecture details, decision patterns,
-operational procedures, vulnerability context, and non-shareable know-how can
-still be sensitive. Treat that content as sensitive after anonymization.
+Anonymization has two operating modes.
 
-Current limitation: pre-search anonymization can make mem0 search worse when
-mem0 contains raw indexed text. For example, if `agent-privacy-guard` replaces a
-customer, repository, API, or file name before an MCP search call, the sanitized
-query may no longer match the raw text stored by the repository ingester.
+When server-side sanitization is disabled, or when previously ingested raw text
+still exists, do not make pre-search query anonymization the default. If a
+client replaces a customer, repository, API, or file name before MCP search, the
+sanitized query may no longer match the already indexed text.
 
-TODO: design sanitize-on-ingest as the primary integration point. The ingestion
-path should optionally call `agent-privacy-guard` before `memory.add`, store only
-sanitized chunk text in mem0, and mark chunks with metadata such as
-`sanitized=true`, `sanitizer=agent-privacy-guard`, and `sanitization_profile`.
-Raw source should remain in Git, Markdown, ADRs, or Obsidian. Sanitized mem0
-content must not be treated as low-risk by default. Post-retrieval sanitization
-should stay a compatibility fallback for legacy raw memory or mixed trust routes,
-not the default design.
+When server-side sanitization is enabled, the mem0-local-platform API is the
+enforcement point. If `mem0.sanitizer.yml` marks a tenant as
+`sanitization.tenants.<tenant>.mode: required`, `/add` replaces configured
+sensitive terms, aliases, and regex patterns such as access-key assignments
+before calling `memory.add`. The API, not the client, marks chunks with metadata
+such as `sanitized=true`, `sanitizer`, `sanitization_profile`, and
+`sanitization_policy_hash`. This applies to GitHub Actions, the Python
+ingestion CLI, and local tools as long as they write through the
+mem0-local-platform API. Raw source should remain in Git, Markdown, ADRs, or
+Obsidian.
+Use `sanitized != true`, a missing policy hash, or a hash that differs from the
+current sanitizer policy to identify legacy or stale mem0 data.
+To apply sanitization to existing mem0 data, enable server-side sanitization and
+then run a `full` sync or re-register from the source of truth.
+For local debugging, the API also records `sanitization_matches` metadata with
+the rule name and match count. It does not include the raw matched value.
 
-That control does not normally apply to GitHub Actions sync jobs. Actions run
-directly on GitHub runners and do not pass through local hooks or a local gateway.
-Protect Actions sync with Cloudflare Access service tokens, GitHub secrets,
-ingestion path rules, and tenant inputs.
+Anonymization does not make sensitive information safe by itself. It only
+reduces impact if data leaks. It is not a replacement for access control,
+tenant isolation, secret handling, or review of what is ingested. Even when
+customer names or personal names are removed, architecture details, decision
+patterns, operational procedures, vulnerability context, and non-shareable
+know-how can still be sensitive. Treat that content as sensitive after
+anonymization.
+
+TODO: separately design how `agent-privacy-guard` receives the target data it
+needs for anonymization, such as tenant-specific sensitive terms, aliases,
+allowed public names, and replacement mappings. Post-retrieval sanitization
+should stay a compatibility fallback for legacy raw memory or mixed trust
+routes, not the default design.
+Policy file format: [policy-format.md](policy-format.md)
 
 ## Human Login
 

@@ -1,0 +1,4 @@
+services:
+  mem0:
+    volumes:
+      - ./mem0.config.yml:/app/mem0.config.yml:ro

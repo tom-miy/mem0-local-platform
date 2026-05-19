@@ -117,6 +117,7 @@ read:
 
 Multiple readable tenants are allowed. Register new memory through GitHub
 Actions or the Python CLI, and set the destination tenant there.
+Policy file format: [policy-format.md](policy-format.md)
 
 ## Operational Examples
 

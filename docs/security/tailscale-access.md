@@ -21,7 +21,7 @@ private network.
 
 ## Compose Startup
 
-Layer the Tailscale override on top of the normal compose file:
+Layer the Tailscale override on top of the normal Docker Compose file:
 
 ```bash
 mise run up-tailscale
@@ -60,7 +60,7 @@ Tailscale are enabled only by `mise run up-tailscale`.
 
 On the home server, configure Tailscale Serve:
 Tailscale Serve can expose the service over HTTPS inside your Tailscale network. Tailscale
-terminates HTTPS; the compose-side `mem0` and `mcp` services can stay on
+terminates HTTPS; the Docker Compose-side `mem0` and `mcp` services can stay on
 localhost HTTP.
 
 The default example separates services by port. This is the safer starting
@@ -85,7 +85,7 @@ Tailscale Serve HTTPS requires enabling HTTPS certificates in the Tailscale
 admin console for your account or organization network. If they are not enabled,
 `tailscale serve` prints a URL that guides you through enabling them.
 You normally do not need to run `tailscale cert` and mount certificate files
-into compose for this setup. The Tailscale daemon terminates HTTPS and proxies
+into Docker Compose for this setup. The Tailscale daemon terminates HTTPS and proxies
 to the localhost HTTP service.
 
 Serve configuration with `--bg` is saved as a background Serve configuration.
@@ -140,7 +140,7 @@ tailscale serve reset
 ## Why There Is No Tailscale Container
 
 This setup does not add a Tailscale container by default. Install Tailscale on
-the home server and use host-level `tailscale serve` to forward to compose
+the home server and use host-level `tailscale serve` to forward to Docker Compose
 services published on `127.0.0.1`.
 
 Reasons:

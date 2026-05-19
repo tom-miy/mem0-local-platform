@@ -218,7 +218,7 @@ The reusable workflow checks out the source repository, checks out this platform
 repository for the ingestion CLI, sets up `uv`, creates the platform `.venv`,
 and builds the file list from `sync_mode`.
 For repository sync from GitHub Actions, `MEM0_API_URL` should be the
-Cloudflare-protected mem0 API hostname, not the internal compose URL.
+Cloudflare-protected mem0 API hostname, not the internal Docker Compose URL.
 GitHub Actions authenticates to Cloudflare Access with repository secrets named
 `MEM0_CLOUDFLARE_ACCESS_CLIENT_ID` and `MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET`.
 That service token can reach the mem0 API. For sensitive tenants or customer
@@ -336,11 +336,12 @@ read:
 
 Search tools only read from configured readable tenants, even when a caller
 requests a narrower set.
+Policy file format: [docs/security/policy-format.md](docs/security/policy-format.md)
 
 ## Cloudflare Setup
 
 Primary access is through Cloudflare Tunnel, Cloudflare Access, and Service
-Token authentication. The compose stack includes `cloudflared`; agent traffic
+Token authentication. The Docker Compose stack includes `cloudflared`; agent traffic
 should enter through Cloudflare and reach internal services by Docker DNS.
 
 Human OAuth login can be added, but it is not required for the default target.
@@ -383,7 +384,7 @@ MEM0_API_URL=https://home-server.tailnet-name.ts.net:8443
 ```
 
 Tailscale Serve terminates HTTPS. You normally do not need to mount certificate
-files into compose. Serve configuration created with `--bg` is saved by the
+files into Docker Compose. Serve configuration created with `--bg` is saved by the
 Tailscale daemon.
 Path-based routing such as `/mem0` and `/mem0-mcp` is possible, but API and MCP
 clients must work under a subpath. The default example uses port separation with
@@ -416,6 +417,7 @@ Create a local env file:
 ```bash
 cp .env.example .env
 cp mem0.policy.example.yml mem0.policy.yml
+cp mem0.sanitizer.example.yml mem0.sanitizer.yml
 ```
 
 Start the runtime:
@@ -444,7 +446,7 @@ Start in the background with memory limits:
 mise run start-resources
 ```
 
-Pull the default Ollama models into the compose `ollama` service:
+Pull the default Ollama models into the Docker Compose `ollama` service:
 
 ```bash
 mise run ollama-pull
@@ -523,32 +525,43 @@ mise run check
 `agent-privacy-guard` is a separate GitHub repository for Claude Code, Cursor,
 Copilot, and Codex safety controls. It is intended to anonymize prompts, route
 MCP calls by trust level, and apply hook-based guardrails before data leaves the
-local client path. mem0-local-platform stores and retrieves memory. The current
-recommended integration is not to anonymize the user's query before mem0 search;
-the intended target is anonymizing content before it is written into mem0.
+local client path. mem0-local-platform stores and retrieves memory.
+
+Anonymization has two operating modes.
+
+When server-side sanitization is disabled, or when previously ingested raw text
+still exists, do not make pre-search query anonymization the default. If a
+client replaces a customer name, repository name, API name, or file name before
+MCP search, the sanitized query may no longer match the already indexed text.
+
+When server-side sanitization is enabled, the mem0-local-platform API is the
+enforcement point. If `mem0.sanitizer.yml` marks a tenant as
+`sanitization.tenants.<tenant>.mode: required`, `/add` replaces configured
+sensitive terms, aliases, and regex patterns such as access-key assignments
+before calling `memory.add`. The API, not the client, adds metadata such as
+`sanitized=true`, `sanitizer`, `sanitization_profile`, and
+`sanitization_policy_hash`. This applies to GitHub Actions, the Python
+ingestion CLI, and local tools as long as they write through the
+mem0-local-platform API. In that mode, mem0 stores only sanitized text, while
+raw source remains in Git, Markdown, ADRs, or Obsidian.
+Use `sanitized != true`, a missing policy hash, or a hash that differs from the
+current sanitizer policy to identify legacy or stale mem0 data.
+To apply sanitization to existing mem0 data, enable server-side sanitization and
+then run a `full` sync or re-register from the source of truth.
+For local debugging, the API also records `sanitization_matches` metadata with
+the rule name and match count. It does not include the raw matched value.
+
 Anonymization is not a replacement for access control or tenant isolation.
 Architecture details, decision patterns, and operating procedures can remain
-sensitive even after names are removed.
+sensitive even after names are removed, so sanitized text can still belong in a
+sensitive tenant.
 
-Current limitation: pre-search prompt anonymization can make mem0 search worse
-when the memory was indexed as raw text. If `agent-privacy-guard` replaces a
-customer name, repository name, API name, or file name in the user prompt before
-the MCP search call, the sanitized query may no longer match the raw text stored
-in mem0.
-
-TODO: add optional sanitize-on-ingest support. For tenants that require this,
-GitHub Actions and the Python ingestion CLI should pass chunk content through
-`agent-privacy-guard` before writing to mem0. In that mode, mem0 stores only
-sanitized text, while raw source remains in Git, Markdown, ADRs, or Obsidian.
-Sanitized text can still belong in a sensitive tenant.
-Post-retrieval sanitization should be only a fallback for legacy raw data or
-mixed trust routes, not the primary integration.
-
-That control does not normally apply to GitHub Actions sync jobs. GitHub Actions
-runs the reusable workflow directly on a GitHub runner. Protect Actions sync with
-Cloudflare Access service tokens, GitHub secrets, include/exclude path rules, and
-the intended tenant input. To apply `agent-privacy-guard` to GitHub Actions, the
-workflow itself would need to be explicitly routed through that gateway.
+TODO: separately design how `agent-privacy-guard` receives the target data it
+needs for anonymization, such as tenant-specific sensitive terms, aliases,
+allowed public names, and replacement mappings. Post-retrieval sanitization
+should be only a fallback for legacy raw data or mixed trust routes, not the
+primary integration.
+Policy file format: [docs/security/policy-format.md](docs/security/policy-format.md)
 
 ## Repository Indexing Lifecycle
 

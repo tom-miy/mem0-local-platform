@@ -2,11 +2,14 @@ from pathlib import Path
 import json
 import os
 import re
+import sys
 import tempfile
+import types
 import unittest
 from unittest.mock import patch
 
 from fastapi import HTTPException
+import yaml
 
 from scripts.chunk_markdown import chunk_markdown, infer_document_type, stable_chunk_id
 from scripts.cleanup_text import cleanup_text
@@ -22,7 +25,22 @@ from scripts.sync_path_rules import load_sync_config
 from scripts.sync_local_repo import unique_paths
 from mem0_local_platform_mcp.mem0_client import Mem0Client
 from mem0_local_platform_mcp.tenant_policy import TenantPolicy
-from mem0_local_platform_api.server import _mem0_search_filters, delete_memories, require_api_key
+from mem0_local_platform_api.sanitizer import (
+    SanitizationPolicy,
+    SanitizationProfile,
+    SensitiveTerm,
+)
+from mem0_local_platform_api.server import (
+    AddRequest,
+    SearchRequest,
+    _mem0_search_filters,
+    add_memory,
+    audit_sanitization,
+    delete_memories,
+    get_memory,
+    require_api_key,
+    search_memory,
+)
 
 
 class IndexingTests(unittest.TestCase):
@@ -248,6 +266,216 @@ Subscribe to the channel
         self.assertEqual(memory.search_filters[0]["user_id"], "secret-knowledge")
         self.assertEqual(memory.search_filters[0]["tenant"], "secret-knowledge")
 
+    def test_audit_sanitization_groups_stale_files_without_returning_memory_text(self) -> None:
+        class FakeMemory:
+            search_filters: dict[str, object] | None = None
+
+            def search(
+                self,
+                _query: str,
+                *,
+                filters: dict[str, object],
+                top_k: int,
+            ) -> dict[str, object]:
+                self.search_filters = filters
+                self.top_k = top_k
+                return {
+                    "results": [
+                        {
+                            "id": "old-hash",
+                            "memory": "raw text must not be returned",
+                            "metadata": {
+                                "tenant": "secret-knowledge",
+                                "repo": "repo",
+                                "path": "docs/a.md",
+                                "sanitized": True,
+                                "sanitization_policy_hash": "old-policy-hash",
+                            },
+                        },
+                        {
+                            "id": "missing-hash",
+                            "metadata": {
+                                "tenant": "secret-knowledge",
+                                "repo": "repo",
+                                "path": "docs/a.md",
+                                "sanitized": True,
+                            },
+                        },
+                        {
+                            "id": "not-sanitized",
+                            "metadata": {
+                                "tenant": "secret-knowledge",
+                                "repo": "repo",
+                                "path": "docs/b.md",
+                            },
+                        },
+                        {
+                            "id": "current",
+                            "metadata": {
+                                "tenant": "secret-knowledge",
+                                "repo": "repo",
+                                "path": "docs/c.md",
+                                "sanitized": True,
+                                "sanitization_policy_hash": "current-policy-hash",
+                            },
+                        },
+                    ]
+                }
+
+        memory = FakeMemory()
+        policy = SanitizationPolicy(
+            tenant_profiles={"secret-knowledge": "default"},
+            profiles={"default": SanitizationProfile(name="default", sensitive_terms=())},
+            policy_hash="current-policy-hash",
+        )
+
+        with (
+            patch("mem0_local_platform_api.server.get_memory", return_value=memory),
+            patch("mem0_local_platform_api.server.get_sanitization_policy", return_value=policy),
+        ):
+            result = audit_sanitization(tenant="secret-knowledge", repo="repo", top_k=50)
+
+        self.assertEqual(memory.search_filters["tenant"], "secret-knowledge")  # type: ignore[index]
+        self.assertEqual(memory.search_filters["user_id"], "secret-knowledge")  # type: ignore[index]
+        self.assertEqual(memory.search_filters["repo"], "repo")  # type: ignore[index]
+        self.assertEqual(memory.top_k, 50)  # type: ignore[attr-defined]
+        self.assertEqual(result["scanned_count"], 4)
+        self.assertEqual(result["issue_file_count"], 2)
+        self.assertEqual(
+            result["files"],
+            [
+                {
+                    "repo": "repo",
+                    "path": "docs/a.md",
+                    "count": 2,
+                    "reasons": ["policy_hash_mismatch", "missing_policy_hash"],
+                    "observed_hashes": ["old-policy-hash"],
+                },
+                {
+                    "repo": "repo",
+                    "path": "docs/b.md",
+                    "count": 1,
+                    "reasons": ["not_sanitized", "missing_policy_hash"],
+                    "observed_hashes": [],
+                },
+            ],
+        )
+        self.assertNotIn("raw text", json.dumps(result))
+
+    def test_audit_sanitization_rejects_tenant_without_required_sanitization(self) -> None:
+        policy = SanitizationPolicy(
+            tenant_profiles={"secret-knowledge": "default"},
+            profiles={"default": SanitizationProfile(name="default", sensitive_terms=())},
+            policy_hash="current-policy-hash",
+        )
+
+        with patch("mem0_local_platform_api.server.get_sanitization_policy", return_value=policy):
+            with self.assertRaises(HTTPException):
+                audit_sanitization(tenant="public-notes")
+
+    def test_search_memory_rejects_stale_sanitization_hash_for_required_tenant(self) -> None:
+        class FakeMemory:
+            def search(
+                self,
+                _query: str,
+                *,
+                filters: dict[str, object],
+                top_k: int,
+            ) -> dict[str, object]:
+                return {
+                    "results": [
+                        {
+                            "id": "stale",
+                            "memory": "raw text must not be returned",
+                            "metadata": {
+                                "tenant": "secret-knowledge",
+                                "repo": "repo",
+                                "path": "docs/a.md",
+                                "sanitized": True,
+                                "sanitization_policy_hash": "old-policy-hash",
+                            },
+                        }
+                    ]
+                }
+
+        policy = SanitizationPolicy(
+            tenant_profiles={"secret-knowledge": "default"},
+            profiles={"default": SanitizationProfile(name="default", sensitive_terms=())},
+            policy_hash="current-policy-hash",
+        )
+
+        with (
+            patch("mem0_local_platform_api.server.get_memory", return_value=FakeMemory()),
+            patch("mem0_local_platform_api.server.get_sanitization_policy", return_value=policy),
+            self.assertRaises(HTTPException) as raised,
+        ):
+            search_memory(
+                SearchRequest(
+                    query="query",
+                    filters={"tenant": "secret-knowledge", "user_id": "secret-knowledge"},
+                )
+            )
+
+        self.assertEqual(raised.exception.status_code, 409)
+        detail = raised.exception.detail
+        self.assertEqual(detail["error"], "stale_sanitization_policy")
+        self.assertEqual(
+            detail["files"],
+            [
+                {
+                    "repo": "repo",
+                    "path": "docs/a.md",
+                    "count": 1,
+                    "reasons": ["policy_hash_mismatch"],
+                    "observed_hashes": ["old-policy-hash"],
+                }
+            ],
+        )
+        self.assertNotIn("raw text", json.dumps(detail))
+
+    def test_search_memory_allows_current_sanitization_hash_for_required_tenant(self) -> None:
+        class FakeMemory:
+            def search(
+                self,
+                _query: str,
+                *,
+                filters: dict[str, object],
+                top_k: int,
+            ) -> dict[str, object]:
+                return {
+                    "results": [
+                        {
+                            "id": "current",
+                            "metadata": {
+                                "tenant": "secret-knowledge",
+                                "repo": "repo",
+                                "path": "docs/a.md",
+                                "sanitized": True,
+                                "sanitization_policy_hash": "current-policy-hash",
+                            },
+                        }
+                    ]
+                }
+
+        policy = SanitizationPolicy(
+            tenant_profiles={"secret-knowledge": "default"},
+            profiles={"default": SanitizationProfile(name="default", sensitive_terms=())},
+            policy_hash="current-policy-hash",
+        )
+
+        with (
+            patch("mem0_local_platform_api.server.get_memory", return_value=FakeMemory()),
+            patch("mem0_local_platform_api.server.get_sanitization_policy", return_value=policy),
+        ):
+            result = search_memory(
+                SearchRequest(
+                    query="query",
+                    filters={"tenant": "secret-knowledge", "user_id": "secret-knowledge"},
+                )
+            )
+
+        self.assertEqual(len(result["results"]), 1)
+
     def test_mem0_search_filters_map_tenant_to_user_id(self) -> None:
         self.assertEqual(
             _mem0_search_filters(
@@ -273,6 +501,285 @@ Subscribe to the channel
     def test_api_key_accepts_matching_bearer_token_when_configured(self) -> None:
         with patch.dict(os.environ, {"MEM0_API_KEY": "expected"}, clear=False):
             self.assertIsNone(require_api_key("Bearer expected"))
+
+    def test_sanitization_policy_replaces_sensitive_terms_for_required_tenant(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            policy_path = Path(tmp) / "mem0.policy.yml"
+            policy_path.write_text(
+                "read:\n"
+                "  - secret-knowledge\n"
+                "sanitization:\n"
+                "  sanitizer: mem0-local-platform\n"
+                "  tenants:\n"
+                "    secret-knowledge:\n"
+                "      mode: required\n"
+                "      profile: default\n"
+                "  profiles:\n"
+                "    default:\n"
+                "      sensitive_terms:\n"
+                "        - term: client-acme\n"
+                "          replacement: CUSTOMER_1\n"
+                "          aliases:\n"
+                "            - Acme client\n",
+                encoding="utf-8",
+            )
+
+            policy = SanitizationPolicy.from_file(policy_path)
+
+        result = policy.sanitize(
+            tenant="secret-knowledge",
+            messages=[{"role": "user", "content": "client-acme and Acme client"}],
+            metadata={"tenant": "secret-knowledge"},
+        )
+
+        self.assertEqual(
+            result.messages,
+            [{"role": "user", "content": "CUSTOMER_1 and CUSTOMER_1"}],
+        )
+        self.assertEqual(result.metadata["sanitized"], True)
+        self.assertEqual(result.metadata["sanitizer"], "mem0-local-platform")
+        self.assertEqual(result.metadata["sanitization_profile"], "default")
+        self.assertEqual(result.metadata["sanitization_policy_hash_algorithm"], "sha256")
+        self.assertRegex(result.metadata["sanitization_policy_hash"], r"^[0-9a-f]{64}$")
+        self.assertEqual(
+            result.metadata["sanitization_matches"],
+            [{"kind": "term", "rule": "term:CUSTOMER_1", "count": 2}],
+        )
+
+    def test_sanitization_policy_hash_changes_when_sanitization_section_changes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            first_path = Path(tmp) / "first.yml"
+            second_path = Path(tmp) / "second.yml"
+            first_path.write_text(
+                "read:\n"
+                "  - secret-knowledge\n"
+                "sanitization:\n"
+                "  tenants:\n"
+                "    secret-knowledge:\n"
+                "      mode: required\n"
+                "      profile: default\n"
+                "  profiles:\n"
+                "    default:\n"
+                "      sensitive_terms:\n"
+                "        - term: client-acme\n"
+                "          replacement: CUSTOMER_1\n",
+                encoding="utf-8",
+            )
+            second_path.write_text(
+                "read:\n"
+                "  - another-tenant\n"
+                "sanitization:\n"
+                "  tenants:\n"
+                "    secret-knowledge:\n"
+                "      mode: required\n"
+                "      profile: default\n"
+                "  profiles:\n"
+                "    default:\n"
+                "      sensitive_terms:\n"
+                "        - term: client-acme\n"
+                "          replacement: CUSTOMER_2\n",
+                encoding="utf-8",
+            )
+
+            first_policy = SanitizationPolicy.from_file(first_path)
+            second_policy = SanitizationPolicy.from_file(second_path)
+
+        self.assertNotEqual(first_policy.policy_hash, second_policy.policy_hash)
+
+    def test_sanitization_policy_replaces_longer_aliases_first(self) -> None:
+        policy = SanitizationPolicy(
+            tenant_profiles={"secret-knowledge": "default"},
+            policy_hash="test-policy-hash",
+            profiles={
+                "default": SanitizationProfile(
+                    name="default",
+                    sensitive_terms=(
+                        SensitiveTerm(
+                            term="client",
+                            replacement="CUSTOMER",
+                            aliases=("client-acme",),
+                        ),
+                    ),
+                )
+            },
+        )
+
+        result = policy.sanitize(
+            tenant="secret-knowledge",
+            messages="client-acme and client",
+            metadata={"tenant": "secret-knowledge"},
+        )
+
+        self.assertEqual(result.messages, "CUSTOMER and CUSTOMER")
+
+    def test_sanitization_policy_replaces_sensitive_regex_patterns(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            policy_path = Path(tmp) / "mem0.policy.yml"
+            policy_path.write_text(
+                "sanitization:\n"
+                "  tenants:\n"
+                "    secret-knowledge:\n"
+                "      mode: required\n"
+                "      profile: default\n"
+                "  profiles:\n"
+                "    default:\n"
+                "      sensitive_terms: []\n"
+                "      sensitive_patterns:\n"
+                "        - name: access-key-assignment\n"
+                "          pattern: '(?i)\\b[A-Z0-9_]*(?:ACCESS|SECRET|API)_KEY\\s*=\\s*[^\\s]+'\n"
+                "          replacement: REDACTED_SECRET_ASSIGNMENT\n",
+                encoding="utf-8",
+            )
+
+            policy = SanitizationPolicy.from_file(policy_path)
+
+        result = policy.sanitize(
+            tenant="secret-knowledge",
+            messages="AWS_ACCESS_KEY=abc123 should not be stored",
+            metadata={"tenant": "secret-knowledge"},
+        )
+
+        self.assertEqual(result.messages, "REDACTED_SECRET_ASSIGNMENT should not be stored")
+        self.assertEqual(
+            result.metadata["sanitization_matches"],
+            [{"kind": "pattern", "rule": "access-key-assignment", "count": 1}],
+        )
+
+    def test_sanitization_policy_rejects_invalid_regex_pattern(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            policy_path = Path(tmp) / "mem0.policy.yml"
+            policy_path.write_text(
+                "sanitization:\n"
+                "  tenants:\n"
+                "    secret-knowledge:\n"
+                "      mode: required\n"
+                "      profile: default\n"
+                "  profiles:\n"
+                "    default:\n"
+                "      sensitive_terms: []\n"
+                "      sensitive_patterns:\n"
+                "        - name: broken\n"
+                "          pattern: '('\n"
+                "          replacement: REDACTED\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(ValueError):
+                SanitizationPolicy.from_file(policy_path)
+
+    def test_sanitization_policy_rejects_allowed_sensitive_conflict(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            policy_path = Path(tmp) / "mem0.policy.yml"
+            policy_path.write_text(
+                "sanitization:\n"
+                "  tenants:\n"
+                "    secret-knowledge:\n"
+                "      mode: required\n"
+                "      profile: default\n"
+                "  profiles:\n"
+                "    default:\n"
+                "      allow_terms:\n"
+                "        - mem0\n"
+                "      sensitive_terms:\n"
+                "        - term: mem0\n"
+                "          replacement: PRODUCT_1\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(ValueError):
+                SanitizationPolicy.from_file(policy_path)
+
+    def test_sanitization_policy_leaves_unconfigured_tenant_unchanged(self) -> None:
+        policy = SanitizationPolicy(
+            tenant_profiles={"secret-knowledge": "default"},
+            profiles={},
+        )
+
+        result = policy.sanitize(
+            tenant="public-notes",
+            messages="client-acme",
+            metadata={"tenant": "public-notes"},
+        )
+
+        self.assertEqual(result.messages, "client-acme")
+        self.assertEqual(result.metadata, {"tenant": "public-notes"})
+
+    def test_add_memory_sanitizes_before_calling_mem0(self) -> None:
+        class FakeMemory:
+            def __init__(self) -> None:
+                self.add_payload: dict[str, object] | None = None
+
+            def add(
+                self,
+                messages: object,
+                *,
+                user_id: str,
+                agent_id: str | None,
+                run_id: str | None,
+                metadata: dict[str, object],
+                infer: bool,
+            ) -> dict[str, str]:
+                self.add_payload = {
+                    "messages": messages,
+                    "user_id": user_id,
+                    "agent_id": agent_id,
+                    "run_id": run_id,
+                    "metadata": metadata,
+                    "infer": infer,
+                }
+                return {"status": "ok"}
+
+        memory = FakeMemory()
+        policy = SanitizationPolicy(
+            tenant_profiles={"secret-knowledge": "default"},
+            policy_hash="test-policy-hash",
+            profiles={
+                "default": SanitizationProfile(
+                    name="default",
+                    sensitive_terms=(
+                        SensitiveTerm(term="client-acme", replacement="CUSTOMER_1"),
+                    ),
+                )
+            },
+        )
+
+        with (
+            patch("mem0_local_platform_api.server.get_memory", return_value=memory),
+            patch("mem0_local_platform_api.server.get_sanitization_policy", return_value=policy),
+        ):
+            add_memory(
+                AddRequest(
+                    messages=[{"role": "user", "content": "client-acme incident note"}],
+                    user_id="secret-knowledge",
+                    metadata={"tenant": "secret-knowledge", "repo": "repo"},
+                    infer=False,
+                )
+            )
+
+        self.assertIsNotNone(memory.add_payload)
+        self.assertEqual(
+            memory.add_payload["messages"],  # type: ignore[index]
+            [{"role": "user", "content": "CUSTOMER_1 incident note"}],
+        )
+        metadata = memory.add_payload["metadata"]  # type: ignore[index]
+        self.assertEqual(metadata["sanitized"], True)  # type: ignore[index]
+        self.assertEqual(metadata["sanitization_profile"], "default")  # type: ignore[index]
+        self.assertEqual(metadata["sanitization_policy_hash"], "test-policy-hash")  # type: ignore[index]
+        self.assertEqual(metadata["sanitization_policy_hash_algorithm"], "sha256")  # type: ignore[index]
+        self.assertEqual(
+            metadata["sanitization_matches"],  # type: ignore[index]
+            [{"kind": "term", "rule": "term:CUSTOMER_1", "count": 1}],
+        )
+
+    def test_add_memory_rejects_mismatched_user_id_and_metadata_tenant(self) -> None:
+        with self.assertRaises(HTTPException):
+            add_memory(
+                AddRequest(
+                    messages="note",
+                    user_id="secret-knowledge",
+                    metadata={"tenant": "client-acme"},
+                )
+            )
 
     def test_mcp_client_searches_each_tenant_with_user_id_filter(self) -> None:
         class FakeClient(Mem0Client):
@@ -422,7 +929,75 @@ Subscribe to the channel
         self.assertEqual(client.headers["CF-Access-Client-Id"], "client-id")
         self.assertEqual(client.headers["CF-Access-Client-Secret"], "client-secret")
 
-    def test_model_provider_docs_config_json_examples_are_valid(self) -> None:
+    def test_get_memory_reads_yaml_config_file(self) -> None:
+        class FakeMemory:
+            config: dict[str, object] | None = None
+
+            @classmethod
+            def from_config(cls, config: dict[str, object]) -> dict[str, object]:
+                cls.config = config
+                return config
+
+        fake_mem0 = types.SimpleNamespace(Memory=FakeMemory)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "mem0.config.yml"
+            config_path.write_text(
+                "\n".join(
+                    (
+                        "vector_store:",
+                        "  provider: qdrant",
+                        "  config:",
+                        "    host: qdrant",
+                        "    port: 6333",
+                        "    collection_name: developer_memories",
+                        "    embedding_model_dims: 1024",
+                        "graph_store:",
+                        "  provider: falkordb",
+                        "  config:",
+                        "    url: redis://falkordb:6379",
+                        "llm:",
+                        "  provider: ollama",
+                        "  config:",
+                        "    model: qwen3.5:4b",
+                        "embedder:",
+                        "  provider: ollama",
+                        "  config:",
+                        "    model: bge-m3",
+                    )
+                ),
+                encoding="utf-8",
+            )
+
+            get_memory.cache_clear()
+            with (
+                patch.dict("os.environ", {"MEM0_CONFIG_FILE": str(config_path)}, clear=True),
+                patch.dict(sys.modules, {"mem0": fake_mem0}),
+            ):
+                memory = get_memory()
+
+            get_memory.cache_clear()
+
+        self.assertEqual(memory["vector_store"]["config"]["host"], "qdrant")  # type: ignore[index]
+        self.assertEqual(FakeMemory.config, memory)
+
+    def test_get_memory_rejects_config_json_and_file_together(self) -> None:
+        fake_mem0 = types.SimpleNamespace(Memory=object)
+
+        get_memory.cache_clear()
+        with (
+            patch.dict(
+                "os.environ",
+                {"MEM0_CONFIG_JSON": "{}", "MEM0_CONFIG_FILE": "/tmp/mem0.config.yml"},
+                clear=True,
+            ),
+            patch.dict(sys.modules, {"mem0": fake_mem0}),
+            self.assertRaises(ValueError),
+        ):
+            get_memory()
+        get_memory.cache_clear()
+
+    def test_model_provider_docs_config_file_examples_are_valid(self) -> None:
         docs = (
             Path("docs/architecture/model-provider-settings.md"),
             Path("docs/architecture/model-provider-settings.jp.md"),
@@ -431,9 +1006,12 @@ Subscribe to the channel
         examples: list[dict[str, object]] = []
         for doc in docs:
             text = doc.read_text(encoding="utf-8")
-            matches = re.findall(r"MEM0_CONFIG_JSON='(\{.*?\})'", text, flags=re.DOTALL)
-            self.assertGreaterEqual(len(matches), 3, f"expected MEM0_CONFIG_JSON examples in {doc}")
-            examples.extend(json.loads(match) for match in matches)
+            matches = re.findall(r"```yaml\n(.*?)\n```", text, flags=re.DOTALL)
+            config_examples = [
+                yaml.safe_load(match) for match in matches if "vector_store:" in match
+            ]
+            self.assertGreaterEqual(len(config_examples), 3, f"expected config file examples in {doc}")
+            examples.extend(config_examples)
 
         for example in examples:
             self.assertIn("vector_store", example)

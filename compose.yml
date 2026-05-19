@@ -39,6 +39,8 @@ services:
       MEM0_DIR: /data/mem0
     volumes:
       - ./data/mem0:/data/mem0
+      - ./mem0.policy.yml:/app/mem0.policy.yml:ro
+      - ./mem0.sanitizer.yml:/app/mem0.sanitizer.yml:ro
     expose:
       - "8000"
 

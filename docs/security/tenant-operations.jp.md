@@ -106,6 +106,7 @@ read:
 読み取り可能テナントは検索できる範囲です。
 登録は GitHub Actions または Python CLI から行います。
 これにより、エージェントの一時的な推測を MCP 経由で永続化する事故を避けます。
+ポリシーファイルの書式: [policy-format.jp.md](policy-format.jp.md)
 
 ## テナントを増やす基準
 
@@ -209,7 +210,7 @@ read:
   - client-18384728-acme
 ```
 
-顧客テナントへ登録する内容は、GitHub Actions の `tenant` input または
+顧客テナントへ登録する内容は、GitHub Actions の `tenant` 入力または
 Python CLI の `--tenant` で指定します。
 作業用テナントへ顧客情報を書かないためです。
 
@@ -233,7 +234,7 @@ read:
 
 ## テナント設定変更時の確認
 
-`mem0.policy.yml`、GitHub Actions の `tenant` input、ローカル同期の `--tenant` を
+`mem0.policy.yml`、GitHub Actions の `tenant` 入力、ローカル同期の `--tenant` を
 変えるときに確認します。
 目的は、読ませてはいけない知識を AI エージェントや開発者に見せないことと、
 登録先テナントを間違えないことです。
@@ -242,5 +243,5 @@ read:
 - 読める開発者、チーム、AI エージェントが本当に違うか
 - プロジェクト名やリポジトリ名だけをテナントにしていないか
 - `mem0.policy.yml` の `read` に不要な顧客テナントや機密テナントが入っていないか
-- GitHub Actions の `tenant` input が登録先として正しいか
+- GitHub Actions の `tenant` 入力が登録先として正しいか
 - ローカル同期や Python CLI の `--tenant` が現在の作業対象と一致しているか

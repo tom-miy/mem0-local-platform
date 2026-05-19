@@ -6,7 +6,7 @@ mem0 に登録するためのものです。
 GitHub Actions の同期とは別経路です。
 通常のリポジトリ同期では共通ワークフローを使います。
 クライアント案件などで GitHub Actions から mem0 に接続できない場合は、
-ローカル clone から差分同期または全体同期を実行できます。
+ローカルクローンから差分同期または全体同期を実行できます。
 その場で思いついたメモ、調査メモ、作業中の決定を登録する場合は
 `remember-to-mem0` を使います。
 
@@ -41,11 +41,11 @@ cp mem0.env.example mem0.env
 
 ## ローカルリポジトリ差分を同期する
 
-GitHub Actions を使えないリポジトリでは、手元の clone から mem0 に同期します。
+GitHub Actions を使えないリポジトリでは、手元のクローンから mem0 に同期します。
 対象リポジトリ側に `.mem0-sync.yml` があればそれを使い、なければ
 mem0-local-platform 側の `.mem0-sync.default.yml` を使います。
 
-作業ツリーと staged 差分だけを確認する例:
+作業ツリーとステージ済み差分だけを確認する例:
 
 ```bash
 MEM0_REPO_ROOT=/path/to/client-repository \
@@ -89,8 +89,8 @@ uv run sync-local-repo-to-mem0 \
   --include-untracked
 ```
 
-この経路でも、`tenant + repo + path` 単位で既存 chunk を消してから再登録します。
-削除済みファイルやリネーム元 path も、差分に含まれていれば mem0 側から消します。
+この経路でも、`tenant + repo + path` 単位で既存チャンクを消してから再登録します。
+削除済みファイルやリネーム元パスも、差分に含まれていれば mem0 側から消します。
 
 ## 直接実行
 
@@ -248,7 +248,7 @@ GitHub Actions の共通ワークフロー:
 
 `sync-local-repo-to-mem0`:
 
-- GitHub Actions から mem0 へ接続できないリポジトリをローカル clone から同期する
+- GitHub Actions から mem0 へ接続できないリポジトリをローカルクローンから同期する
 - クライアント案件の private リポジトリを Cloudflare/Tailscale 経由で手元から登録する
 - `HEAD` からの作業ツリー差分、または `origin/main` など任意 ref からの差分を同期する
 - 初回投入や再構築時に `--sync-mode full` を使う

@@ -51,8 +51,8 @@ Confirm the models are available:
 ollama list
 ```
 
-The default compose runtime includes an `ollama` service, so
-`OLLAMA_BASE_URL=http://ollama:11434` works inside compose. If Ollama runs on the
+The default Docker Compose runtime includes an `ollama` service, so
+`OLLAMA_BASE_URL=http://ollama:11434` works inside Docker Compose. If Ollama runs on the
 host instead, set `OLLAMA_BASE_URL=http://host.docker.internal:11434`.
 
 If you use the manual Ollama install instead of the install script, create the
@@ -73,7 +73,7 @@ MEM0_EMBEDDING_DIMS=1024
 OLLAMA_BASE_URL=http://ollama:11434
 ```
 
-Pull the default models after starting compose:
+Pull the default models after starting Docker Compose:
 
 ```bash
 mise run ollama-pull
@@ -85,7 +85,7 @@ the Qdrant collection.
 
 ## Host Ollama
 
-Use this when Ollama runs on the host machine instead of inside compose.
+Use this when Ollama runs on the host machine instead of inside Docker Compose.
 
 ```env
 MEM0_LLM_PROVIDER=ollama
@@ -97,47 +97,44 @@ MEM0_EMBEDDING_DIMS=1024
 OLLAMA_BASE_URL=http://host.docker.internal:11434
 ```
 
-This is convenient for development, but compose is no longer fully
+This is convenient for development, but Docker Compose is no longer fully
 self-contained.
 
 ## Ollama Cloud
 
-Use `MEM0_CONFIG_JSON` when the provider needs an explicit hosted endpoint or
-API key.
+Use `MEM0_CONFIG_FILE` when the provider needs an explicit hosted endpoint or
+API key. Keep the long mem0 config in a YAML file instead of putting it directly
+in `.env`.
 
 ```env
-MEM0_CONFIG_JSON='{
-  "vector_store": {
-    "provider": "qdrant",
-    "config": {
-      "host": "qdrant",
-      "port": 6333,
-      "collection_name": "developer_memories",
-      "embedding_model_dims": 1024
-    }
-  },
-  "graph_store": {
-    "provider": "falkordb",
-    "config": {
-      "url": "redis://falkordb:6379"
-    }
-  },
-  "llm": {
-    "provider": "ollama",
-    "config": {
-      "model": "qwen3.5:4b",
-      "temperature": 0.1,
-      "ollama_base_url": "https://ollama.example.com"
-    }
-  },
-  "embedder": {
-    "provider": "ollama",
-    "config": {
-      "model": "bge-m3",
-      "ollama_base_url": "https://ollama.example.com"
-    }
-  }
-}'
+MEM0_CONFIG_FILE=/app/mem0.config.yml
+```
+
+`mem0.config.yml`:
+
+```yaml
+vector_store:
+  provider: qdrant
+  config:
+    host: qdrant
+    port: 6333
+    collection_name: developer_memories
+    embedding_model_dims: 1024
+graph_store:
+  provider: falkordb
+  config:
+    url: redis://falkordb:6379
+llm:
+  provider: ollama
+  config:
+    model: qwen3.5:4b
+    temperature: 0.1
+    ollama_base_url: https://ollama.example.com
+embedder:
+  provider: ollama
+  config:
+    model: bge-m3
+    ollama_base_url: https://ollama.example.com
 ```
 
 If the hosted endpoint requires a token, keep it in `.env` or your runtime
@@ -150,80 +147,87 @@ only, and keep embeddings on a stable embedding provider.
 
 ```env
 OPENROUTER_API_KEY=...
-MEM0_CONFIG_JSON='{
-  "vector_store": {
-    "provider": "qdrant",
-    "config": {
-      "host": "qdrant",
-      "port": 6333,
-      "collection_name": "developer_memories",
-      "embedding_model_dims": 1024
-    }
-  },
-  "graph_store": {
-    "provider": "falkordb",
-    "config": {
-      "url": "redis://falkordb:6379"
-    }
-  },
-  "llm": {
-    "provider": "openai",
-    "config": {
-      "model": "meta-llama/llama-3.1-8b-instruct"
-    }
-  },
-  "embedder": {
-    "provider": "ollama",
-    "config": {
-      "model": "bge-m3",
-      "ollama_base_url": "http://ollama:11434"
-    }
-  }
-}'
+MEM0_CONFIG_FILE=/app/mem0.config.yml
+```
+
+`mem0.config.yml`:
+
+```yaml
+vector_store:
+  provider: qdrant
+  config:
+    host: qdrant
+    port: 6333
+    collection_name: developer_memories
+    embedding_model_dims: 1024
+graph_store:
+  provider: falkordb
+  config:
+    url: redis://falkordb:6379
+llm:
+  provider: openai
+  config:
+    model: meta-llama/llama-3.1-8b-instruct
+embedder:
+  provider: ollama
+  config:
+    model: bge-m3
+    ollama_base_url: http://ollama:11434
 ```
 
 ## OpenAI-Compatible Routers
 
 For routers such as OpenRouter-compatible gateways, LiteLLM gateways, or local
-LLM routers, prefer `MEM0_CONFIG_JSON` so the base URL, API key, model, vector
+LLM routers, prefer `MEM0_CONFIG_FILE` so the base URL, API key, model, vector
 store, and graph store stay reviewable in one place.
 
 Example for a LiteLLM-compatible router:
 
 ```env
 OPENAI_API_KEY=...
-MEM0_CONFIG_JSON='{
-  "vector_store": {
-    "provider": "qdrant",
-    "config": {
-      "host": "qdrant",
-      "port": 6333,
-      "collection_name": "developer_memories",
-      "embedding_model_dims": 1024
-    }
-  },
-  "graph_store": {
-    "provider": "falkordb",
-    "config": {
-      "url": "redis://falkordb:6379"
-    }
-  },
-  "llm": {
-    "provider": "litellm",
-    "config": {
-      "model": "openai/gpt-4.1-mini",
-      "base_url": "https://router.example.com/v1"
-    }
-  },
-  "embedder": {
-    "provider": "ollama",
-    "config": {
-      "model": "bge-m3",
-      "ollama_base_url": "http://ollama:11434"
-    }
-  }
-}'
+MEM0_CONFIG_FILE=/app/mem0.config.yml
 ```
+
+`mem0.config.yml`:
+
+```yaml
+vector_store:
+  provider: qdrant
+  config:
+    host: qdrant
+    port: 6333
+    collection_name: developer_memories
+    embedding_model_dims: 1024
+graph_store:
+  provider: falkordb
+  config:
+    url: redis://falkordb:6379
+llm:
+  provider: litellm
+  config:
+    model: openai/gpt-4.1-mini
+    base_url: https://router.example.com/v1
+embedder:
+  provider: ollama
+  config:
+    model: bge-m3
+    ollama_base_url: http://ollama:11434
+```
+
+When running with Docker Compose, mount the file into the `mem0` service:
+
+```bash
+cp mem0.config.example.yml mem0.config.yml
+docker compose -f compose.yml -f compose.mem0-config.yml up -d
+```
+
+`compose.mem0-config.yml` mounts `./mem0.config.yml` as
+`/app/mem0.config.yml` in the `mem0` service. Keep `MEM0_CONFIG_FILE` set to
+`/app/mem0.config.yml`.
+
+`MEM0_CONFIG_FILE` also accepts `.json` files. `MEM0_CONFIG_JSON` is still
+supported for short experiments. Do not set
+`MEM0_CONFIG_JSON` and `MEM0_CONFIG_FILE` at the same time.
 
 Use the base URL required by your router. Validate router-specific `base_url`
 support before relying on it in production. mem0 provider adapters do not all

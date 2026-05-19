@@ -20,9 +20,9 @@ FalkorDB before copying files.
 
 ## Restore
 
-1. Stop the compose stack.
+1. Stop the Docker Compose stack.
 2. Restore `data/` from backup.
-3. Start the compose stack.
+3. Start the Docker Compose stack.
 4. Run a dry repository sync before allowing writes.
 
 Git and Markdown remain the canonical source. If backend state is lost, the

@@ -22,14 +22,14 @@ mise run sync-path-rules
 
 mem0 が起動している場合は、`--dry-run` を外すとチャンクを更新または追加できます。
 
-Compose 実行環境では、compose ネットワーク内でヘルスチェックを確認できます。
+Docker Compose 実行環境では、Docker Compose ネットワーク内でヘルスチェックを確認できます。
 
 ```bash
 docker compose -f compose.yml exec mem0 \
   uv run python -c "import httpx; print(httpx.get('http://localhost:8000/healthz').json())"
 ```
 
-compose ネットワークの外から接続する場合は、Cloudflare で保護された mem0 ホスト名を
+Docker Compose ネットワークの外から接続する場合は、Cloudflare で保護された mem0 ホスト名を
 使います。
 
 ローカルチェックをすべて実行します。

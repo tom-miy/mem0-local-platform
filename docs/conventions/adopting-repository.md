@@ -25,7 +25,7 @@ Set these GitHub repository secrets:
 - `MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET`
 
 `MEM0_API_URL` should be the Cloudflare-protected hostname. Do not use the
-internal compose URL from GitHub Actions.
+internal Docker Compose URL from GitHub Actions.
 
 `MEM0_API_KEY` is enforced by the mem0 API runtime when the same value is set on
 the server. It may be empty for local-only experiments, but set it for exposed or
