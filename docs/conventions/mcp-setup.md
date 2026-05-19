@@ -29,7 +29,7 @@ wrappers around the Python CLI.
 
 Example:
 
-```text
+```python
 search_memory(
   query="when should trace.zip be preserved",
   tenants=["secret-knowledge"],
@@ -103,10 +103,7 @@ server environment.
 ## Cloudflare Tunnel Setup
 
 Expose the MCP service through Cloudflare Tunnel:
-
-```text
-mem0-mcp.example.com -> http://mcp:8010
-```
+`mem0-mcp.example.com -> http://mcp:8010`.
 
 Print an SSE or HTTP remote MCP snippet:
 
@@ -121,10 +118,7 @@ Print an SSE or HTTP remote MCP snippet:
 
 For private access from your own devices to a home server, point `MEM0_API_URL`
 at the Tailscale device name:
-
-```text
-MEM0_API_URL=https://home-server.tailnet-name.ts.net:8443
-```
+`MEM0_API_URL=https://home-server.tailnet-name.ts.net:8443`.
 
 If you want to reach the MCP service over the tailnet, configure Tailscale Serve
 on the server:

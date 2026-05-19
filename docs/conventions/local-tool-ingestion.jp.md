@@ -13,24 +13,12 @@ GitHub Actions の同期とは別経路です。
 ## 接続先
 
 ローカルツールから Compose 外の mem0 に接続する場合は、Cloudflare Access で
-保護されたホスト名を使います。
-
-```text
-MEM0_API_URL=https://mem0-api.example.com
-```
+保護されたホスト名を使います: `MEM0_API_URL=https://mem0-api.example.com`
 
 自分の Tailscale ネットワーク内の端末から自宅サーバへ接続する場合は、Tailscale の
-デバイス名も使えます。
+デバイス名も使えます: `MEM0_API_URL=https://home-server.tailnet-name.ts.net:8443`
 
-```text
-MEM0_API_URL=https://home-server.tailnet-name.ts.net:8443
-```
-
-Compose 内のサービスから呼ぶ場合だけ、内部 URL を使います。
-
-```text
-MEM0_API_URL=http://mem0:8000
-```
+Compose 内のサービスから呼ぶ場合だけ、内部 URL を使います: `MEM0_API_URL=http://mem0:8000`
 
 Raycast や通常のターミナルから Cloudflare Access 経由で使う場合は、
 Cloudflare Access のサービストークンも設定します。値は `mem0.env` に置くか、
@@ -215,10 +203,8 @@ pbpaste | \
 
 Raycast 側には次の環境変数を設定します。
 
-```text
-CLOUDFLARE_ACCESS_CLIENT_ID
-CLOUDFLARE_ACCESS_CLIENT_SECRET
-```
+- `CLOUDFLARE_ACCESS_CLIENT_ID`
+- `CLOUDFLARE_ACCESS_CLIENT_SECRET`
 
 `MEM0_API_URL` はスクリプトに直接書かず、Raycast の環境変数として渡しても構いません。
 

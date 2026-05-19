@@ -50,7 +50,7 @@ uv run remember-to-mem0 \
 
 Search from an AI agent:
 
-```text
+```python
 search_memory("How should trace.zip be handled when E2E fails?")
 ```
 
@@ -123,7 +123,7 @@ itself is a customer, NDA, external-sharing, or developer access boundary.
 
 Search example:
 
-```text
+```python
 search_memory(
   query="when should trace.zip be preserved for E2E failures",
   tenants=["secret-knowledge"],
@@ -149,11 +149,7 @@ tenants.
 
 ## GitHub Sync Strategy
 
-Workflow logic is centralized here:
-
-```text
-.github/workflows/reusable-sync.yml
-```
+Workflow logic is centralized in `.github/workflows/reusable-sync.yml`.
 
 That workflow is `workflow_call` only. It is the shared implementation.
 
@@ -235,11 +231,8 @@ production deployments.
 `CLOUDFLARE_TUNNEL_TOKEN` is only used by the platform runtime's
 `cloudflared` service.
 
-Each repository can keep path rules in a source-controlled config file:
-
-```text
-.mem0-sync.yml
-```
+Each repository can keep path rules in the source-controlled `.mem0-sync.yml`
+config file.
 
 The reusable workflow reads that file when it exists. If it is absent, it uses
 `.mem0-sync.default.yml` from this platform repository. The workflow itself does
@@ -318,11 +311,7 @@ indexed as repository context chunks. Each chunk preserves:
 - heading hierarchy
 - tags
 
-Stable IDs are SHA-256 hashes of:
-
-```text
-repo:path:heading[:occurrence]
-```
+Stable IDs are SHA-256 hashes of `repo:path:heading[:occurrence]`.
 
 The occurrence suffix is used only when the same heading appears more than once
 in the same file.
@@ -463,10 +452,8 @@ mise run ollama-pull
 
 Default local model split:
 
-```text
-qwen3.5:4b = reasoning, extraction, metadata, summarization, MCP/tool layer
-bge-m3     = retrieval and semantic search layer
-```
+- `qwen3.5:4b`: reasoning, extraction, metadata, summarization, MCP/tool layer
+- `bge-m3`: retrieval and semantic search layer
 
 Do not use `qwen3.5:4b` as the embedding model.
 
@@ -475,15 +462,13 @@ library instead of depending on an unverified external image.
 
 Persistent backend data is stored under `data/` with bind mounts:
 
-```text
-data/falkordb/
-data/qdrant/
-data/mem0/
-data/ollama/
-```
+- `data/falkordb/`
+- `data/qdrant/`
+- `data/mem0/`
+- `data/ollama/`
 
-Back up `data/` with normal filesystem backup tools. The compose file does not
-use Docker named volumes for state.
+Back up `data/` with normal filesystem backup tools. Docker Compose `compose.yml`
+does not use Docker named volumes for state.
 
 Docker memory sizing guide:
 [docs/operations/resource-sizing.md](docs/operations/resource-sizing.md)
@@ -540,7 +525,10 @@ Copilot, and Codex safety controls. It is intended to anonymize prompts, route
 MCP calls by trust level, and apply hook-based guardrails before data leaves the
 local client path. mem0-local-platform stores and retrieves memory. The current
 recommended integration is not to anonymize the user's query before mem0 search;
-the safer target is anonymizing content before it is written into mem0.
+the intended target is anonymizing content before it is written into mem0.
+Anonymization is not a replacement for access control or tenant isolation.
+Architecture details, decision patterns, and operating procedures can remain
+sensitive even after names are removed.
 
 Current limitation: pre-search prompt anonymization can make mem0 search worse
 when the memory was indexed as raw text. If `agent-privacy-guard` replaces a
@@ -552,6 +540,7 @@ TODO: add optional sanitize-on-ingest support. For tenants that require this,
 GitHub Actions and the Python ingestion CLI should pass chunk content through
 `agent-privacy-guard` before writing to mem0. In that mode, mem0 stores only
 sanitized text, while raw source remains in Git, Markdown, ADRs, or Obsidian.
+Sanitized text can still belong in a sensitive tenant.
 Post-retrieval sanitization should be only a fallback for legacy raw data or
 mixed trust routes, not the primary integration.
 

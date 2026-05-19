@@ -114,10 +114,8 @@ Generate the caller workflow and path-rule file:
 
 This creates:
 
-```text
-.github/workflows/sync-memory.yml
-.mem0-sync.yml
-```
+- `.github/workflows/sync-memory.yml`
+- `.mem0-sync.yml`
 
 Existing files are not overwritten unless `--force` is provided.
 

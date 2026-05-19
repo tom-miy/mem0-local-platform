@@ -91,8 +91,15 @@ sync or a self-hosted runner for sensitive data instead of direct Actions sync.
 Copilot, and Codex prompt safety. It anonymizes prompts, routes MCP calls by
 trust level, and applies hook-based controls before data leaves the local client
 path. For mem0-local-platform, the recommended direction is not pre-search query
-anonymization. The safer integration point is anonymizing content before it is
+anonymization. The intended integration point is anonymizing content before it is
 written into mem0.
+
+Anonymization does not make sensitive information safe by itself. It only reduces
+impact if data leaks. It is not a replacement for access control, tenant
+isolation, secret handling, or review of what is ingested. Even when customer
+names or personal names are removed, architecture details, decision patterns,
+operational procedures, vulnerability context, and non-shareable know-how can
+still be sensitive. Treat that content as sensitive after anonymization.
 
 Current limitation: pre-search anonymization can make mem0 search worse when
 mem0 contains raw indexed text. For example, if `agent-privacy-guard` replaces a
@@ -103,9 +110,10 @@ TODO: design sanitize-on-ingest as the primary integration point. The ingestion
 path should optionally call `agent-privacy-guard` before `memory.add`, store only
 sanitized chunk text in mem0, and mark chunks with metadata such as
 `sanitized=true`, `sanitizer=agent-privacy-guard`, and `sanitization_profile`.
-Raw source should remain in Git, Markdown, ADRs, or Obsidian. Post-retrieval
-sanitization should stay a compatibility fallback for legacy raw memory or mixed
-trust routes, not the default design.
+Raw source should remain in Git, Markdown, ADRs, or Obsidian. Sanitized mem0
+content must not be treated as low-risk by default. Post-retrieval sanitization
+should stay a compatibility fallback for legacy raw memory or mixed trust routes,
+not the default design.
 
 That control does not normally apply to GitHub Actions sync jobs. Actions run
 directly on GitHub runners and do not pass through local hooks or a local gateway.

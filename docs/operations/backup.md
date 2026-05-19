@@ -2,14 +2,12 @@
 
 State is stored in repository-local bind mounts under `data/`.
 
-```text
-data/falkordb/
-data/qdrant/
-data/mem0/
-data/ollama/
-```
+- `data/falkordb/`
+- `data/qdrant/`
+- `data/mem0/`
+- `data/ollama/`
 
-The compose file intentionally avoids Docker named volumes for backend state.
+The Docker Compose `compose.yml` file intentionally avoids Docker named volumes for backend state.
 This keeps backups visible to standard filesystem tooling and avoids hidden
 Docker volume paths.
 

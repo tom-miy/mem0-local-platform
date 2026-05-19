@@ -19,36 +19,28 @@ mise run up-tailscale-resources
 
 外部 LLM と外部の埋め込みモデル提供元を使う場合:
 
-```text
-ホストメモリ: 4GB から 6GB
-```
+- ホストメモリ: 4GB から 6GB
 
 ローカル Ollama で軽量モデルと埋め込みモデルを動かす場合:
 
-```text
-ホストメモリ: 12GB から 16GB
-例: qwen3.5:4b + bge-m3
-```
+- ホストメモリ: 12GB から 16GB
+- 例: `qwen3.5:4b` + `bge-m3`
 
 大きめのローカルモデルを使う場合:
 
-```text
-ホストメモリ: 24GB から 32GB 以上
-例: 8B 以上のモデル、複数モデル常駐、大きいリポジトリの連続取り込み
-```
+- ホストメモリ: 24GB から 32GB 以上
+- 例: 8B 以上のモデル、複数モデル常駐、大きいリポジトリの連続取り込み
 
 ## デフォルトの上限
 
 `compose.resources.yml` の初期値:
 
-```text
-falkordb:    1GB
-qdrant:      2GB
-ollama:      8GB
-mem0:        1GB
-mcp:       512MB
-cloudflared: 256MB
-```
+- `falkordb`: 1GB
+- `qdrant`: 2GB
+- `ollama`: 8GB
+- `mem0`: 1GB
+- `mcp`: 512MB
+- `cloudflared`: 256MB
 
 この値は「小さめの個人サーバで落ち方を予測しやすくする」ための上限です。
 性能を最大化する設定ではありません。

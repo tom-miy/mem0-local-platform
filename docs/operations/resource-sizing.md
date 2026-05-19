@@ -19,36 +19,28 @@ mise run up-tailscale-resources
 
 External LLM and external embedding provider:
 
-```text
-Host memory: 4GB to 6GB
-```
+- Host memory: 4GB to 6GB
 
 Local Ollama with a small LLM and embedding model:
 
-```text
-Host memory: 12GB to 16GB
-Example: qwen3.5:4b + bge-m3
-```
+- Host memory: 12GB to 16GB
+- Example: `qwen3.5:4b` + `bge-m3`
 
 Larger local models:
 
-```text
-Host memory: 24GB to 32GB+
-Example: 8B+ models, multiple resident models, repeated ingestion of large repos
-```
+- Host memory: 24GB to 32GB+
+- Example: 8B+ models, multiple resident models, repeated ingestion of large repos
 
 ## Default Limits
 
 Initial values in `compose.resources.yml`:
 
-```text
-falkordb:    1GB
-qdrant:      2GB
-ollama:      8GB
-mem0:        1GB
-mcp:       512MB
-cloudflared: 256MB
-```
+- `falkordb`: 1GB
+- `qdrant`: 2GB
+- `ollama`: 8GB
+- `mem0`: 1GB
+- `mcp`: 512MB
+- `cloudflared`: 256MB
 
 These limits are meant to make behavior predictable on a small personal server.
 They are not tuned for maximum throughput.

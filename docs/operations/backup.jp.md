@@ -2,14 +2,12 @@
 
 状態はリポジトリローカルの bind mount として `data/` 配下に保存します。
 
-```text
-data/falkordb/
-data/qdrant/
-data/mem0/
-data/ollama/
-```
+- `data/falkordb/`
+- `data/qdrant/`
+- `data/mem0/`
+- `data/ollama/`
 
-Compose ファイルでは、バックエンド状態に Docker named volume を使いません。
+Docker Compose の `compose.yml` では、バックエンド状態に Docker named volume を使いません。
 通常のファイルシステム用バックアップツールから見える場所に置き、Docker の隠れた
 volume パスへ依存しないためです。
 

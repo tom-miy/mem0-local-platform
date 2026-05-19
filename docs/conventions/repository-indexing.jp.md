@@ -43,7 +43,7 @@ python scripts/ingest_repo.py \
 
 MCP 検索では、同じテナント内で必要な範囲だけを指定します。
 
-```text
+```python
 search_memory(
   query="trace.zip を保存する条件",
   tenants=["secret-knowledge"],
@@ -55,7 +55,7 @@ search_memory(
 
 特定リポジトリだけを見たい場合は `related_repo_context` を使います。
 
-```text
+```python
 related_repo_context(
   repo="backend-testing-patterns",
   query="E2E 失敗時のログ保存方針",
@@ -66,7 +66,7 @@ related_repo_context(
 `path` は完全一致のメタデータフィルタです。
 特定ファイルだけを見たいときに使います。
 
-```text
+```python
 search_memory(
   query="retry の判断基準",
   tenants=["secret-knowledge"],
@@ -116,11 +116,7 @@ CLI は、生成物や依存関係が多いパスを除外します。
 PDF、Office 文書、画像、アーカイブ、音声や動画も除外します。
 これらはファイル種別ごとの抽出処理を用意してから索引対象にします。
 
-リポジトリごとのパスルールは、Git 管理する設定ファイルに置けます。
-
-```text
-.mem0-sync.yml
-```
+リポジトリごとのパスルールは、Git 管理する `.mem0-sync.yml` に置けます。
 
 共通ワークフローは、このファイルがあれば読み込みます。
 なければ mem0-local-platform 側の `.mem0-sync.default.yml` を使います。
@@ -158,14 +154,12 @@ Markdown は見出し単位で分割します。
 `type` は取り込み時に Python 側で `path` から自動判定します。
 現状の値は次です。
 
-```text
-readme
-adr
-doc
-code
-config
-markdown
-```
+- `readme`
+- `adr`
+- `doc`
+- `code`
+- `config`
+- `markdown`
 
 `type` はファイルの大分類です。
 `ローカルツール用の Go` と `メイン app 用の Go` のような用途分類は、

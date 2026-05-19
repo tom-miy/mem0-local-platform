@@ -8,11 +8,7 @@ mem0 は、AI エージェントが開発中に文脈を検索するための基
 
 ## チャンク ID
 
-チャンクは次の値から安定した更新 ID を作ります。
-
-```text
-repo:path:heading[:occurrence]
-```
+チャンクは `repo:path:heading[:occurrence]` から安定した更新 ID を作ります。
 
 同じファイル内で同じ見出しが複数回出る場合だけ、末尾に occurrence を付けます。
 現在の実装では、この値を SHA-256 でハッシュします。

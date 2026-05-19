@@ -243,10 +243,8 @@ are ready to recreate the Qdrant collection.
 
 The architecture split is intentional:
 
-```text
-qwen3.5:4b = reasoning, extraction, metadata, summarization, MCP/tool layer
-bge-m3     = retrieval and semantic search layer
-```
+- `qwen3.5:4b`: reasoning, extraction, metadata, summarization, MCP/tool layer
+- `bge-m3`: retrieval and semantic search layer
 
 Do not use `qwen3.5:4b` as the embedding model. Retrieval quality is more
 important than generative quality for this platform.

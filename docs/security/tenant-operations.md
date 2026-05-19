@@ -10,45 +10,66 @@ Tenants are not repository categories. Repository names are stored as metadata.
 - Use tenants for readable boundaries and registration destinations.
 - Use `repo` metadata for repository-level retrieval.
 - Use tenant names that match operational isolation decisions.
-- Split tenants when customer work, NDA terms, external-sharing restrictions, or
-  developer-specific repository access differs.
+- Split tenants when allowed readers differ across customers, teams, developers,
+  or AI agents.
+- Split tenants when handling rules differ, such as NDA terms,
+  external-sharing restrictions, or reuse restrictions.
+- Split tenants when leak impact differs, such as sensitive architecture
+  details, decision patterns, operating procedures, or vulnerability context.
 - Do not split tenants when the same agent may read the same knowledge boundary.
+Use `repo`, `path`, `type`, and `tags` for classifications that do not change the
+read boundary.
 
 ## Recommended Tenants
 
-```text
-secret-knowledge
-client-*
-```
+Tenant names should describe the read boundary, not the repository name. Choose
+names that make it clear who may read the knowledge and which owner or customer
+boundary it belongs to.
+
+Useful tenant names:
+
+- Personal or company knowledge boundary: `secret-knowledge`, `studio-knowledge`, `mimr-internal`
+- Team boundary: `team-platform`, `team-sales-tools`
+- Customer or project boundary: `client-acme`, `client-upwork-18384728-acme`
+- NDA or external-sharing boundary: `restricted-acme`, `nda-partner-x`
+
+Naming rules:
+
+- The allowed people or AI agents should be understandable from the name.
+- Customer, project, team, or ownership boundaries should be visible.
+- The name should still make sense if repositories are renamed.
+- Do not name tenants only by public/private status, language, framework, or app name.
+
+Base shapes:
+
+- `secret-knowledge`
+- `client-*`
 
 `secret-knowledge` is an example boundary for your own judgment patterns and
 internal knowledge that do not need a customer-specific tenant. It does not mean
 that arbitrary secrets should be indexed there.
 
-Examples:
+## Do Not Use Repository Names As Tenants By Default
 
-```text
-secret-knowledge
-client-upwork-18384728-acme
-client-acme
-```
+Repository names, app names, tool names, and technical area names usually belong
+in `repo`, `path`, `type`, or `tags` metadata instead.
 
-## Avoid Repository Tenants
+If the name does not tell you who may read the knowledge, do not use it as a
+tenant name. The following examples are repository names, app names, tool names,
+or technical area names. They describe source or retrieval scope, not read
+boundaries:
 
-Do not make repository-per-tenant the default:
+- `backend-testing-patterns`: repository name
+- `frontend-app`: app name
+- `infra-scripts`: tool or script area
+- `platform-api`: app or API area
+- `review-tools`: tool or purpose name
+- `terraform-modules`: technical area or module group
 
-```text
-backend-testing-patterns
-frontend-app
-infra-scripts
-```
-
-Those names are repositories or topics, not security boundaries.
-
-Repository tenants are not the default because they make shared knowledge harder
-to retrieve across repositories, turn repository rename/split/merge work into
-access-control changes, and do not model monorepo areas such as `apps/api`,
-`tools/review`, or `docs/adr`.
+Repository names are not the default tenant shape because they make shared
+knowledge harder to retrieve across repositories, turn repository rename, split,
+and merge work into access-control changes, do not model monorepo areas such as
+`apps/api` or `tools/review`, and increase policy-review overhead.
 
 Exception: if a repository itself is a customer, NDA, external-sharing, or
 developer access boundary, using a dedicated tenant for that repository is
@@ -110,7 +131,7 @@ This tenant can contain publishable skills, private judgment patterns, DevEx
 templates, research tools, and sales or deal notes. Use metadata to narrow the
 search scope.
 
-```text
+```python
 search_memory(
   query="FastAPI exception review criteria",
   tenants=["secret-knowledge"],
@@ -122,7 +143,7 @@ search_memory(
 
 Omit `repo` when you want shared knowledge across repositories:
 
-```text
+```python
 search_memory(
   query="when should flaky E2E behavior be suspected",
   tenants=["secret-knowledge"],
@@ -132,7 +153,7 @@ search_memory(
 
 Use `repo` when the repository is the scope:
 
-```text
+```python
 related_repo_context(
   repo="backend-testing-patterns",
   query="trace.zip retention policy",
@@ -142,7 +163,7 @@ related_repo_context(
 
 Use `path` for one exact file:
 
-```text
+```python
 search_memory(
   query="when is retry allowed",
   tenants=["secret-knowledge"],
@@ -164,7 +185,7 @@ python scripts/ingest_repo.py \
   --changed-files apps/api/internal/auth/session.go
 ```
 
-```text
+```python
 search_memory(
   query="session refresh failure handling",
   tenants=["secret-knowledge"],
@@ -193,13 +214,16 @@ Here, `team-platform` and `team-sales-tools` are not repository names. They are
 knowledge sets with different allowed readers. Inside each tenant, still use
 `repo`, `path`, `type`, and `tags` for retrieval scope.
 
-## Review Checklist
+## Tenant Configuration Change Check
 
-When changing tenant settings, check:
+Use this when changing `mem0.policy.yml`, GitHub Actions `tenant` inputs, or
+local sync `--tenant` values. The goal is to avoid exposing knowledge to agents
+or developers that should not read it, and to avoid writing memory into the wrong
+tenant.
 
-- Is the tenant really a security boundary?
-- Are the allowed developers or agents actually different?
+- Is the new tenant really a read boundary?
+- Are the allowed developers, teams, or AI agents actually different?
 - Is a repository or project name being used as a tenant?
-- Does the registration `tenant` match the current work target?
-- Are unnecessary client tenants included in the read list?
-- Does the GitHub Actions `tenant` input match the intended destination?
+- Does `mem0.policy.yml` include unnecessary client or sensitive tenants in `read`?
+- Does the GitHub Actions `tenant` input match the intended write destination?
+- Does local sync or Python CLI `--tenant` match the current work target?

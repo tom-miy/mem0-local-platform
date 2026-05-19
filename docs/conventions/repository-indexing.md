@@ -43,7 +43,7 @@ That produces chunk metadata such as:
 
 MCP searches can pass the same metadata filters:
 
-```text
+```python
 search_memory(
   query="when should trace.zip be preserved",
   tenants=["secret-knowledge"],
@@ -55,7 +55,7 @@ search_memory(
 
 Use `related_repo_context` when the repository is the main scope:
 
-```text
+```python
 related_repo_context(
   repo="backend-testing-patterns",
   query="E2E failure log retention policy",
@@ -65,7 +65,7 @@ related_repo_context(
 
 `path` is an exact metadata filter for one file:
 
-```text
+```python
 search_memory(
   query="retry decision criteria",
   tenants=["secret-knowledge"],
@@ -117,11 +117,8 @@ It also excludes binary and non-text formats such as PDF, Office documents,
 images, archives, and media files. Those need file-type-specific extractors
 before they should be indexed.
 
-Repositories can keep path rules in a source-controlled YAML file:
-
-```text
-.mem0-sync.yml
-```
+Repositories can keep path rules in the source-controlled `.mem0-sync.yml`
+YAML file.
 
 The reusable workflow reads that file when it exists. If it is absent, it uses
 `.mem0-sync.default.yml` from the platform repository. The workflow itself does
@@ -155,14 +152,12 @@ with path, document type, and repository metadata preserved.
 `type` is inferred by the Python ingestion code from `path` at registration
 time. Current values are:
 
-```text
-readme
-adr
-doc
-code
-config
-markdown
-```
+- `readme`
+- `adr`
+- `doc`
+- `code`
+- `config`
+- `markdown`
 
 `type` is a broad file category. Usage-level labels such as local tool Go code
 versus main app Go code are both stored as `type=code`; retrieval should

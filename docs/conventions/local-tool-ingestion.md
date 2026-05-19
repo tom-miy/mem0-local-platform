@@ -12,22 +12,13 @@ not yet been written back to Git.
 ## Connection
 
 From outside Docker Compose, use the Cloudflare Access protected API hostname:
-
-```text
-MEM0_API_URL=https://mem0-api.example.com
-```
+`MEM0_API_URL=https://mem0-api.example.com`.
 
 From your own devices in a tailnet, you can also use the Tailscale device name:
-
-```text
-MEM0_API_URL=https://home-server.tailnet-name.ts.net:8443
-```
+`MEM0_API_URL=https://home-server.tailnet-name.ts.net:8443`.
 
 Only services inside the compose network should use:
-
-```text
-MEM0_API_URL=http://mem0:8000
-```
+`MEM0_API_URL=http://mem0:8000`.
 
 Local tools using the Cloudflare Access path also need the Cloudflare Access
 service token values. Tailscale access does not need Cloudflare Access service

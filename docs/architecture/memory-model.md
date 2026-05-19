@@ -8,11 +8,7 @@ retrieve context during development.
 
 ## Chunk Identity
 
-Chunks use stable upsert IDs derived from:
-
-```text
-repo:path:heading[:occurrence]
-```
+Chunks use stable upsert IDs derived from `repo:path:heading[:occurrence]`.
 
 The occurrence suffix is used only when the same heading appears more than once
 in the same file. The current implementation hashes that value with SHA-256.
