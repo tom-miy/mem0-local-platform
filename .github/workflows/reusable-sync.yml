@@ -49,13 +49,38 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Check mem0 connection settings
+        id: mem0_connection
+        env:
+          MEM0_API_URL: ${{ secrets.MEM0_API_URL }}
+          CLOUDFLARE_ACCESS_CLIENT_ID: ${{ secrets.MEM0_CLOUDFLARE_ACCESS_CLIENT_ID }}
+          CLOUDFLARE_ACCESS_CLIENT_SECRET: ${{ secrets.MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          should_sync=true
+          if [ -z "$MEM0_API_URL" ]; then
+            echo "::warning::MEM0_API_URL secret is not set; skipping repository sync."
+            should_sync=false
+          elif [[ "$MEM0_API_URL" != http://* && "$MEM0_API_URL" != https://* ]]; then
+            echo "::warning::MEM0_API_URL must start with http:// or https://; skipping repository sync."
+            should_sync=false
+          fi
+          if [ -z "$CLOUDFLARE_ACCESS_CLIENT_ID" ] || [ -z "$CLOUDFLARE_ACCESS_CLIENT_SECRET" ]; then
+            echo "::warning::MEM0_CLOUDFLARE_ACCESS_CLIENT_ID and MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET secrets are not set; skipping repository sync."
+            should_sync=false
+          fi
+          echo "should_sync=$should_sync" >> "$GITHUB_OUTPUT"
+
       - name: Checkout source repository
+        if: steps.mem0_connection.outputs.should_sync == 'true'
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         with:
           path: source
           fetch-depth: 0
 
       - name: Checkout mem0-local-platform
+        if: steps.mem0_connection.outputs.should_sync == 'true'
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         with:
           repository: ${{ inputs.platform_repository || github.repository }}
@@ -63,14 +88,17 @@ jobs:
           path: platform
 
       - name: Set up uv
+        if: steps.mem0_connection.outputs.should_sync == 'true'
         uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff
 
       - name: Install platform dependencies
+        if: steps.mem0_connection.outputs.should_sync == 'true'
         working-directory: platform
         shell: bash
         run: uv sync --no-dev
 
       - name: Write path rules
+        if: steps.mem0_connection.outputs.should_sync == 'true'
         working-directory: platform
         env:
           SYNC_CONFIG_FILE: ${{ inputs.sync_config_file }}
@@ -85,6 +113,7 @@ jobs:
             --exclude-output "$RUNNER_TEMP/exclude-paths.txt"
 
       - name: Detect files to sync
+        if: steps.mem0_connection.outputs.should_sync == 'true'
         working-directory: source
         env:
           SYNC_MODE: ${{ inputs.sync_mode }}
@@ -125,31 +154,8 @@ jobs:
             exit 2
           fi
 
-      - name: Validate mem0 connection settings
-        env:
-          MEM0_API_URL: ${{ secrets.MEM0_API_URL }}
-          CLOUDFLARE_ACCESS_CLIENT_ID: ${{ secrets.MEM0_CLOUDFLARE_ACCESS_CLIENT_ID }}
-          CLOUDFLARE_ACCESS_CLIENT_SECRET: ${{ secrets.MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -z "$MEM0_API_URL" ]; then
-            echo "MEM0_API_URL secret is required for repository sync." >&2
-            exit 2
-          fi
-          case "$MEM0_API_URL" in
-            http://*|https://*) ;;
-            *)
-              echo "MEM0_API_URL must start with http:// or https://." >&2
-              exit 2
-              ;;
-          esac
-          if [ -z "$CLOUDFLARE_ACCESS_CLIENT_ID" ] || [ -z "$CLOUDFLARE_ACCESS_CLIENT_SECRET" ]; then
-            echo "MEM0_CLOUDFLARE_ACCESS_CLIENT_ID and MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET secrets are required for repository sync." >&2
-            exit 2
-          fi
-
       - name: Sync files to mem0
+        if: steps.mem0_connection.outputs.should_sync == 'true'
         working-directory: platform
         env:
           MEM0_API_URL: ${{ secrets.MEM0_API_URL }}
