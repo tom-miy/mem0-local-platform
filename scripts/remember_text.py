@@ -10,7 +10,7 @@ from typing import Any
 
 import httpx
 
-from scripts.ingest_repo import build_request_headers
+from scripts.ingest_repo import build_request_headers, validate_mem0_url
 
 
 def main() -> int:
@@ -84,7 +84,7 @@ class AdHocMemoryClient:
         cloudflare_access_client_secret: str,
         agent_id: str,
     ) -> None:
-        self.api_url = api_url.rstrip("/")
+        self.api_url = validate_mem0_url(api_url)
         self.headers = build_request_headers(
             api_key=api_key,
             cloudflare_access_client_id=cloudflare_access_client_id,

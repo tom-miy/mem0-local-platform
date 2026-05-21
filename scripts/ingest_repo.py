@@ -10,6 +10,7 @@ from pathlib import Path
 import subprocess
 import sys
 from typing import Any, Iterable
+from urllib.parse import urlparse
 
 from scripts.chunk_markdown import MarkdownChunk, chunk_markdown
 
@@ -340,7 +341,7 @@ class Mem0HttpClient:
         cloudflare_access_client_secret: str,
         agent_id: str,
     ) -> None:
-        self.api_url = api_url.rstrip("/")
+        self.api_url = validate_mem0_url(api_url)
         self.headers = build_request_headers(
             api_key=api_key,
             cloudflare_access_client_id=cloudflare_access_client_id,
@@ -390,6 +391,14 @@ class Mem0HttpClient:
         if response.status_code == 404:
             return
         response.raise_for_status()
+
+
+def validate_mem0_url(api_url: str) -> str:
+    normalized = api_url.rstrip("/")
+    parsed = urlparse(normalized)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        raise ValueError("MEM0_API_URL must be an absolute http:// or https:// URL")
+    return normalized
 
 
 def build_request_headers(

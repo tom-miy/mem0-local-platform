@@ -20,6 +20,7 @@ from scripts.ingest_repo import (
     normalize_repo_path,
     parse_git_name_status,
     should_index,
+    validate_mem0_url,
 )
 from scripts.sync_path_rules import load_sync_config
 from scripts.sync_local_repo import unique_paths
@@ -234,6 +235,16 @@ Subscribe to the channel
                 "path": "docs/example.md",
             },
         )
+
+    def test_validate_mem0_url_requires_absolute_http_url(self) -> None:
+        self.assertEqual(
+            validate_mem0_url("https://mem0-api.example.com/"),
+            "https://mem0-api.example.com",
+        )
+        with self.assertRaisesRegex(ValueError, "MEM0_API_URL"):
+            validate_mem0_url("")
+        with self.assertRaisesRegex(ValueError, "MEM0_API_URL"):
+            validate_mem0_url("mem0-api.example.com")
 
     def test_delete_memories_deletes_more_than_one_search_page(self) -> None:
         class FakeMemory:
