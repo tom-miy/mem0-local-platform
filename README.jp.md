@@ -213,6 +213,14 @@ jobs:
 
 詳細は [別リポジトリへの導入手順](docs/conventions/adopting-repository.jp.md)
 を見てください。
+GitHub Actions の `MEM0_API_URL` は `https://` で始まる URL にしてください。
+Cloudflare Access で保護されたホスト名、または Tailscale 経由で HTTPS 終端できる
+ホスト名を使います。
+GitHub-hosted runner はローカルの Docker ネットワーク外にあるため、GitHub Actions から
+リポジトリ内容やメモリ payload を平文の `http://` で送らないでください。
+`MEM0_API_URL`、`MEM0_CLOUDFLARE_ACCESS_CLIENT_ID`、または
+`MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET` が未設定の場合、共通ワークフローは warning を出し、
+リポジトリ同期をスキップします。
 機密テナントや顧客リポジトリでは、GitHub Actions に mem0 のサービストークンを
 置くこと自体がリスクになります。
 その場合は Actions 直結ではなく、ローカルクローンからの同期、Tailscale 経由の同期、
@@ -402,7 +410,9 @@ mem0-mcp.example.com -> http://mcp:8010
 ```
 
 GitHub Actions の `MEM0_API_URL` には、Cloudflare Access で保護された
-ホスト名を設定します。Compose 内部の `http://mem0:8000` は外部から使いません。
+ホスト名、または Tailscale 経由で HTTPS 終端できるホスト名を設定します。
+GitHub Actions からの同期では `https://` を必須にします。
+Compose 内部の `http://mem0:8000` は外部から使いません。
 
 GitHub Actions は Cloudflare Access のサービストークンで認証します。
 呼び出し側ワークフローには GitHub シークレット名として

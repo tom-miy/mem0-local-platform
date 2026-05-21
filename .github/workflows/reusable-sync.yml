@@ -62,8 +62,8 @@ jobs:
           if [ -z "$MEM0_API_URL" ]; then
             echo "::warning::MEM0_API_URL secret is not set; skipping repository sync."
             should_sync=false
-          elif [[ "$MEM0_API_URL" != http://* && "$MEM0_API_URL" != https://* ]]; then
-            echo "::warning::MEM0_API_URL must start with http:// or https://; skipping repository sync."
+          elif [[ "$MEM0_API_URL" != https://* ]]; then
+            echo "::warning::MEM0_API_URL must start with https:// for GitHub Actions repository sync; skipping repository sync."
             should_sync=false
           fi
           if [ -z "$CLOUDFLARE_ACCESS_CLIENT_ID" ] || [ -z "$CLOUDFLARE_ACCESS_CLIENT_SECRET" ]; then

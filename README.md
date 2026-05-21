@@ -218,7 +218,14 @@ The reusable workflow checks out the source repository, checks out this platform
 repository for the ingestion CLI, sets up `uv`, creates the platform `.venv`,
 and builds the file list from `sync_mode`.
 For repository sync from GitHub Actions, `MEM0_API_URL` should be the
-Cloudflare-protected mem0 API hostname, not the internal Docker Compose URL.
+Cloudflare-protected or Tailscale-routed mem0 API hostname, not the internal
+Docker Compose URL.
+The URL must start with `https://`. GitHub-hosted runners are outside your
+local Docker network, so do not send repository content or memory payloads over
+plain `http://` from GitHub Actions.
+If `MEM0_API_URL`, `MEM0_CLOUDFLARE_ACCESS_CLIENT_ID`, or
+`MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET` is not set, the workflow emits a warning
+and skips repository sync instead of failing the whole workflow.
 GitHub Actions authenticates to Cloudflare Access with repository secrets named
 `MEM0_CLOUDFLARE_ACCESS_CLIENT_ID` and `MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET`.
 That service token can reach the mem0 API. For sensitive tenants or customer

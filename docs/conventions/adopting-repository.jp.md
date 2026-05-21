@@ -25,7 +25,17 @@ GitHub リポジトリのシークレット:
 - `MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET`
 
 `MEM0_API_URL` は Cloudflare Access で保護されたホスト名を使います。
+GitHub Actions からのリポジトリ同期では `https://` で始まる URL を必須にします。
+Tailscale 経由で接続する場合も、HTTPS 終端されたホスト名を使います。
 Compose 内部の `http://mem0:8000` は使いません。
+平文の `http://` は、信頼境界の外へ出ないローカル実行や Docker Compose 内部通信だけに
+限定してください。
+
+`MEM0_API_URL`、`MEM0_CLOUDFLARE_ACCESS_CLIENT_ID`、または
+`MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET` が未設定の場合、共通ワークフローは warning を出して
+リポジトリ同期をスキップします。
+公開リポジトリや導入直後の呼び出し側リポジトリで、接続シークレットを意図的に設定する前に
+ワークフロー全体が失敗しないようにするためです。
 
 `MEM0_API_KEY` は、mem0 API ランタイム側にも同じ値を設定した場合に
 Bearer トークンとして検証されます。

@@ -25,7 +25,16 @@ Set these GitHub repository secrets:
 - `MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET`
 
 `MEM0_API_URL` should be the Cloudflare-protected hostname. Do not use the
-internal Docker Compose URL from GitHub Actions.
+internal Docker Compose URL from GitHub Actions. For repository sync from
+GitHub Actions, the URL must start with `https://`, including when access is
+routed through Tailscale. Plain `http://` is only for local or internal Docker
+network calls that do not leave the trusted network boundary.
+
+If `MEM0_API_URL`, `MEM0_CLOUDFLARE_ACCESS_CLIENT_ID`, or
+`MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET` is not set, the reusable workflow emits a
+warning and skips repository sync. This keeps public repositories or newly
+installed callers from failing before connection secrets are intentionally
+configured.
 
 `MEM0_API_KEY` is enforced by the mem0 API runtime when the same value is set on
 the server. It may be empty for local-only experiments, but set it for exposed or
