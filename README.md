@@ -7,8 +7,12 @@ Japanese documentation: [README.jp.md](README.jp.md)
 This repository runs a self-hosted mem0 layer backed by FalkorDB and Qdrant,
 exposes tenant-aware memory tools over MCP, and provides one reusable GitHub
 Actions workflow for keeping repository knowledge in sync.
-With the local Ollama configuration, indexed knowledge can stay inside your own
-Docker runtime instead of being sent to an external AI SaaS.
+With the local Ollama configuration, ingestion and retrieval processing (LLM
+and embeddings) stays inside your own Docker runtime instead of being sent to
+an external AI SaaS.
+Note that when a cloud-hosted agent such as Codex or Claude searches through
+MCP, the matched text is returned to that agent's service; control what
+external agents may read with the readable tenants in `mem0.policy.yml`.
 
 It can:
 
@@ -69,26 +73,33 @@ new customer-specific memory with the GitHub Actions `tenant` input or
 ## Architecture
 
 ```text
-Git repository
-  -> GitHub push
-  -> reusable mem0 sync workflow
+Write (ingestion):
+Git repository -> GitHub push -> reusable mem0 sync workflow
   -> ingest-to-mem0 CLI
-  -> Cloudflare Tunnel
-  -> mem0
+Local clone / Markdown / Obsidian / Raycast -> Python ingestion CLI
+  -> Cloudflare Tunnel (external routes such as GitHub Actions only)
+  -> mem0 API
      -> FalkorDB graph memory
      -> Qdrant vector retrieval
-  -> MCP
-  -> Codex / Claude / local agents
+
+Read (search):
+Codex / Claude / local agents
+  -> MCP server (through Cloudflare Tunnel for external agents)
+  -> mem0 API
 ```
 
 ## Memory Flow
 
 1. A repository changes through normal Git work.
-2. GitHub push triggers `.github/workflows/reusable-sync.yml`.
-3. The workflow selects changed files or all tracked files.
-4. `scripts/ingest_repo.py` indexes repository context files.
-5. Chunks are upserted with stable IDs based on `repo + path + heading + occurrence`.
-6. Agents retrieve memory through MCP tools with tenant filters applied.
+2. GitHub push triggers a thin caller workflow, which calls the reusable
+   workflow `.github/workflows/reusable-sync.yml`.
+3. The reusable workflow builds the `changed` or `full` file list.
+4. `scripts/ingest_repo.py` splits eligible files into retrieval chunks with
+   stable IDs based on `repo + path + heading + occurrence`.
+5. Existing chunks for the same `tenant + repo + path` are deleted before
+   re-registration.
+6. Deleted and renamed source paths remove stale chunks from mem0.
+7. Agents retrieve memory through MCP tools with tenant filters applied.
 
 ## Tenant Strategy
 
@@ -223,9 +234,11 @@ Docker Compose URL.
 The URL must start with `https://`. GitHub-hosted runners are outside your
 local Docker network, so do not send repository content or memory payloads over
 plain `http://` from GitHub Actions.
-If `MEM0_API_URL`, `MEM0_CLOUDFLARE_ACCESS_CLIENT_ID`, or
-`MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET` is not set, the workflow emits a warning
+If the secret value of `MEM0_API_URL`, `MEM0_CLOUDFLARE_ACCESS_CLIENT_ID`, or
+`MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET` is empty, the workflow emits a warning
 and skips repository sync instead of failing the whole workflow.
+The caller workflow must still pass all three in its `secrets:` block;
+omitting them there fails the workflow call itself.
 GitHub Actions authenticates to Cloudflare Access with repository secrets named
 `MEM0_CLOUDFLARE_ACCESS_CLIENT_ID` and `MEM0_CLOUDFLARE_ACCESS_CLIENT_SECRET`.
 That service token can reach the mem0 API. For sensitive tenants or customer
@@ -271,38 +284,22 @@ MEM0_SINCE_REF=origin/main \
 mise run sync-local-repo
 ```
 
-Indexed paths:
+The default rules mainly index:
 
-- `README.md`
-- `README*.md`
-- `docs/**/*.md`
-- `adr/**/*.md`
-- `adrs/**/*.md`
-- `**/*.go`
-- `**/*.py`
-- `**/*.ts`
-- `**/*.tsx`
-- `**/*.js`
-- `**/*.jsx`
-- `**/*.rs`
-- `**/*.java`
-- `**/*.kt`
-- `**/*.sql`
-- `**/*.sh`
-- `api.yaml`
-- `openapi.yaml`
-- `**/*.yaml`
-- `**/*.yml`
-- `**/*.json`
-- `**/*.toml`
-- `**/*.proto`
-- `Dockerfile`
-- `compose.yml`
-- `Makefile`
+- `README*.md`, `docs/**/*.md`, `adr/**/*.md`, `adrs/**/*.md`
+- source code: `**/*.go`, `**/*.py`, `**/*.ts`, `**/*.tsx`, `**/*.js`,
+  `**/*.jsx`, `**/*.rs`, `**/*.java`, `**/*.kt`, `**/*.sql`, `**/*.sh`
+- API definitions and config: `**/api.yaml`, `**/openapi.yaml` (plus the
+  `.yml` variants), `**/*.yaml`, `**/*.yml`, `**/*.json`, `**/*.toml`,
+  `**/*.ini`, `**/*.proto`, `**/*.graphql`
+- `**/Dockerfile`, `**/compose.yml`, `**/compose.yaml`, `**/Makefile`
 
-Ignored paths include `node_modules`, `dist`, `vendor`, `coverage`, and build
-artifacts. Secret and runtime state paths such as `.env`, `secrets/**`, and
-`data/**` are also excluded.
+The default exclusions mainly cover `.git/**`, `.venv/**`, `.cache/**`,
+`data/**`, `secrets/**`, `.env` and `.env.local`, dependency and build output
+such as `node_modules/**`, `dist/**`, `vendor/**`, `coverage/**`, `build/**`,
+and `__pycache__/**`, lock files, and binary formats such as images, media,
+archives, Office documents, and PDF.
+The complete definition is in [.mem0-sync.default.yml](.mem0-sync.default.yml).
 
 Exclusion applies before inclusion.
 
@@ -551,10 +548,13 @@ before calling `memory.add`. The API, not the client, adds metadata such as
 ingestion CLI, and local tools as long as they write through the
 mem0-local-platform API. In that mode, mem0 stores only sanitized text, while
 raw source remains in Git, Markdown, ADRs, or Obsidian.
-Use `sanitized != true`, a missing policy hash, or a hash that differs from the
-current sanitizer policy to identify legacy or stale mem0 data.
+For `mode: required` tenants, the API also enforces this policy on reads: when
+search results include memories with `sanitized != true`, a missing policy
+hash, or a hash that differs from the current sanitizer policy, the API fails
+the search with `409 stale_sanitization_policy` and lists the affected files.
 To apply sanitization to existing mem0 data, enable server-side sanitization and
-then run a `full` sync or re-register from the source of truth.
+then run a `full` sync or re-register from the source of truth. Search on the
+affected tenants stays blocked until that rebuild completes.
 For local debugging, the API also records `sanitization_matches` metadata with
 the rule name and match count. It does not include the raw matched value.
 
